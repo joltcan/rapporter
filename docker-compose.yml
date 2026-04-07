@@ -1,0 +1,62 @@
+version: "3.9"
+
+services:
+  db:
+    image: postgres:17-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-rapporter}
+      POSTGRES_USER: ${POSTGRES_USER:-rapporter}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-rapporter}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rapporter} -d ${POSTGRES_DB:-rapporter}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+    networks:
+      - internal
+
+  web:
+    build: .
+    restart: unless-stopped
+    environment:
+      SECRET_KEY: ${SECRET_KEY}
+      DATABASE_URL: ${DATABASE_URL:-postgresql://rapporter:rapporter@db:5432/rapporter}
+      FLASK_APP: wsgi.py
+      FLASK_ENV: ${FLASK_ENV:-production}
+      BASE_URL: ${BASE_URL:-https://localhost}
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - internal
+    volumes:
+      - ./app/static:/app/app/static
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+    volumes:
+      - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    depends_on:
+      - web
+
+volumes:
+  postgres_data:
+  caddy_data:
+  caddy_config:
+
+networks:
+  internal:
+    driver: bridge

@@ -1,0 +1,88 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} – Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('admin.camps') }}" class="btn btn-sm btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-geo-alt me-2 text-success"></i>{{ title }}
+    </h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.name.label(class="form-label fw-semibold") }}
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else "")) }}
+                        {% for error in form.name.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.location.label(class="form-label fw-semibold") }}
+                        {{ form.location(class="form-control" + (" is-invalid" if form.location.errors else "")) }}
+                        {% for error in form.location.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="row">
+                        <div class="col-6 mb-3">
+                            {{ form.start_date.label(class="form-label fw-semibold") }}
+                            {{ form.start_date(class="form-control" + (" is-invalid" if form.start_date.errors else "")) }}
+                            {% for error in form.start_date.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-6 mb-3">
+                            {{ form.end_date.label(class="form-label fw-semibold") }}
+                            {{ form.end_date(class="form-control" + (" is-invalid" if form.end_date.errors else "")) }}
+                            {% for error in form.end_date.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                    </div>
+
+                    <div class="mb-4">
+                        <div class="form-check form-switch">
+                            {{ form.is_active(class="form-check-input") }}
+                            {{ form.is_active.label(class="form-check-label fw-semibold") }}
+                        </div>
+                        <div class="form-text">Aktiva läger visas i rapportformuläret.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-success") }}
+                        <a href="{{ url_for('admin.camps') }}" class="btn btn-outline-secondary">Avbryt</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if camp %}
+        <div class="card mt-3 border-primary">
+            <div class="card-body">
+                <h6 class="fw-semibold"><i class="bi bi-sliders me-2"></i>Anpassade fält</h6>
+                <p class="text-muted small mb-2">
+                    Lägg till egna fält för detta läger som visas i rapportformuläret.
+                    {{ (camp.custom_fields or [])|length }} fält konfigurerade.
+                </p>
+                <a href="{{ url_for('admin.camp_fields', camp_id=camp.id) }}"
+                   class="btn btn-sm btn-outline-primary">
+                    <i class="bi bi-sliders me-1"></i>Hantera fält
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

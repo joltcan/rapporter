@@ -1,0 +1,30 @@
+{
+    # Disable automatic HTTPS redirect for localhost
+    # Use internal CA so it works offline
+    local_certs
+    auto_https off
+}
+
+{$CADDY_DOMAIN:localhost} {
+    tls internal
+
+    reverse_proxy web:8000 {
+        header_up X-Real-IP {remote_host}
+        header_up X-Forwarded-For {remote_host}
+        header_up X-Forwarded-Proto {scheme}
+    }
+
+    encode gzip
+
+    header {
+        Strict-Transport-Security "max-age=31536000; includeSubDomains"
+        X-Content-Type-Options "nosniff"
+        X-Frame-Options "SAMEORIGIN"
+        Referrer-Policy "strict-origin-when-cross-origin"
+    }
+
+    log {
+        output stdout
+        format json
+    }
+}

@@ -1,0 +1,19 @@
+# Används automatiskt av docker compose vid lokal utveckling.
+# Mountar källkoden direkt in i containern – ingen rebuild krävs vid kodändringar.
+# Flask körs i debug-läge med auto-reload.
+#
+# Starta med: docker compose up
+# (override-filen plockas upp automatiskt)
+
+services:
+  web:
+    build: .
+    environment:
+      FLASK_ENV: development
+      FLASK_DEBUG: "1"
+    volumes:
+      - .:/app          # hela projektet mountas – ändringar syns direkt
+    command: >
+      sh -c "flask db upgrade &&
+             flask seed &&
+             flask run --host=0.0.0.0 --port=8000 --reload"

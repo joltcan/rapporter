@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }} – Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('admin.users') }}" class="btn btn-sm btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-person me-2 text-success"></i>{{ title }}
+    </h1>
+</div>
+
+<div class="row justify-content-center">
+    <div class="col-lg-6 col-md-8">
+        <div class="card">
+            <div class="card-body p-4">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+
+                    <div class="mb-3">
+                        {{ form.username.label(class="form-label fw-semibold") }}
+                        {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""),
+                           autocomplete="off") }}
+                        {% for error in form.username.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                        <div class="form-text">Endast bokstäver, siffror och understreck.</div>
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.password.label(class="form-label fw-semibold") }}
+                        {% if edit_mode %}
+                        <div class="form-text mb-1">Lämna tomt för att behålla befintligt lösenord.</div>
+                        {% endif %}
+                        <div class="input-group">
+                            {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
+                               id="pwd", autocomplete="new-password") }}
+                            <button class="btn btn-outline-secondary" type="button" id="togglePwd"
+                                    aria-label="Visa/dölj lösenord">
+                                <i class="bi bi-eye" id="togglePwdIcon"></i>
+                            </button>
+                            {% for error in form.password.errors %}
+                            <div class="invalid-feedback">{{ error }}</div>
+                            {% endfor %}
+                        </div>
+                        {% if not edit_mode %}
+                        <div class="form-text">Minst 6 tecken.</div>
+                        {% endif %}
+                    </div>
+
+                    <div class="mb-3">
+                        {{ form.role.label(class="form-label fw-semibold") }}
+                        {{ form.role(class="form-select" + (" is-invalid" if form.role.errors else "")) }}
+                        {% for error in form.role.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                    </div>
+
+                    <div class="mb-4">
+                        {{ form.camp_id.label(class="form-label fw-semibold") }}
+                        {{ form.camp_id(class="form-select" + (" is-invalid" if form.camp_id.errors else "")) }}
+                        {% for error in form.camp_id.errors %}
+                        <div class="invalid-feedback">{{ error }}</div>
+                        {% endfor %}
+                        <div class="form-text">Koppla användaren till ett specifikt läger.</div>
+                    </div>
+
+                    <div class="d-flex gap-2">
+                        {{ form.submit(class="btn btn-success") }}
+                        <a href="{{ url_for('admin.users') }}" class="btn btn-outline-secondary">Avbryt</a>
+                    </div>
+                </form>
+            </div>
+        </div>
+
+        {% if edit_mode and user %}
+        <div class="card mt-3 border-secondary">
+            <div class="card-body">
+                <h6 class="fw-semibold"><i class="bi bi-qr-code me-2"></i>QR-kod</h6>
+                <p class="text-muted small mb-2">
+                    Generera en QR-kod med förifyllt användarnamn för enklare inloggning.
+                </p>
+                <a href="{{ url_for('admin.user_qr', user_id=user.id) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-qr-code me-1"></i>Visa QR-kod
+                </a>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+document.getElementById('togglePwd').addEventListener('click', function () {
+    const pwd = document.getElementById('pwd');
+    const icon = document.getElementById('togglePwdIcon');
+    if (pwd.type === 'password') {
+        pwd.type = 'text';
+        icon.classList.replace('bi-eye', 'bi-eye-slash');
+    } else {
+        pwd.type = 'password';
+        icon.classList.replace('bi-eye-slash', 'bi-eye');
+    }
+});
+</script>
+{% endblock %}

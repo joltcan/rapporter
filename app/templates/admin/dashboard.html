@@ -1,0 +1,156 @@
+{% extends "base.html" %}
+
+{% block title %}Översikt – Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-speedometer2 me-2 text-success"></i>Översikt
+    </h1>
+    <a href="{{ url_for('incidents.new_incident') }}" class="btn btn-success">
+        <i class="bi bi-plus-circle me-1"></i>Ny rapport
+    </a>
+</div>
+
+<!-- Stats cards -->
+<div class="row g-3 mb-4">
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-5 fw-bold text-primary">{{ total_incidents }}</div>
+                <div class="text-muted small mt-1">Totalt rapporter</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-5 fw-bold text-danger">{{ open_incidents }}</div>
+                <div class="text-muted small mt-1">Öppna ärenden</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-5 fw-bold text-success">{{ total_camps }}</div>
+                <div class="text-muted small mt-1">Aktiva läger</div>
+            </div>
+        </div>
+    </div>
+    <div class="col-6 col-lg-3">
+        <div class="card h-100">
+            <div class="card-body text-center">
+                <div class="display-5 fw-bold text-secondary">{{ total_users }}</div>
+                <div class="text-muted small mt-1">Användare</div>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- Recent incidents -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span><i class="bi bi-clock-history me-2"></i>Senaste rapporter</span>
+        <a href="{{ url_for('admin.reports') }}" class="btn btn-sm btn-outline-secondary">
+            Visa alla <i class="bi bi-arrow-right ms-1"></i>
+        </a>
+    </div>
+    <div class="card-body p-0">
+        {% if recent_incidents %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Tidpunkt</th>
+                        <th>Läger</th>
+                        <th>Typ</th>
+                        <th>Allvarlighet</th>
+                        <th>Status</th>
+                        <th>Rapportör</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in recent_incidents %}
+                    <tr>
+                        <td class="text-muted small">{{ inc.id }}</td>
+                        <td class="small">{{ inc.occurred_at.strftime('%d %b %Y %H:%M') if inc.occurred_at else '–' }}</td>
+                        <td class="small">{{ inc.camp.name if inc.camp else '–' }}</td>
+                        <td>
+                            <span class="badge bg-secondary">{{ inc.incident_type }}</span>
+                        </td>
+                        <td>
+                            {% if inc.severity == 'låg' %}
+                                <span class="badge badge-låg">Låg</span>
+                            {% elif inc.severity == 'medium' %}
+                                <span class="badge badge-medium">Medium</span>
+                            {% else %}
+                                <span class="badge badge-hög">Hög</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.status == 'öppen' %}
+                                <span class="badge badge-öppen">Öppen</span>
+                            {% elif inc.status == 'pågående' %}
+                                <span class="badge badge-pågående">Pågående</span>
+                            {% else %}
+                                <span class="badge badge-stängd">Stängd</span>
+                            {% endif %}
+                        </td>
+                        <td class="small">{{ inc.reporter.username if inc.reporter else '–' }}</td>
+                        <td>
+                            <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}"
+                               class="btn btn-sm btn-outline-primary">
+                                <i class="bi bi-eye"></i>
+                            </a>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+            Inga rapporter än.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Quick links -->
+<div class="row g-3 mt-2">
+    <div class="col-md-4">
+        <a href="{{ url_for('admin.new_camp') }}" class="text-decoration-none">
+            <div class="card h-100 border-success">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-geo-alt-fill text-success fs-3"></i>
+                    <div class="mt-2 fw-semibold">Nytt läger</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ url_for('admin.new_user') }}" class="text-decoration-none">
+            <div class="card h-100 border-primary">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-person-plus-fill text-primary fs-3"></i>
+                    <div class="mt-2 fw-semibold">Ny användare</div>
+                </div>
+            </div>
+        </a>
+    </div>
+    <div class="col-md-4">
+        <a href="{{ url_for('admin.export_reports') }}" class="text-decoration-none">
+            <div class="card h-100 border-secondary">
+                <div class="card-body text-center py-3">
+                    <i class="bi bi-download text-secondary fs-3"></i>
+                    <div class="mt-2 fw-semibold">Exportera CSV</div>
+                </div>
+            </div>
+        </a>
+    </div>
+</div>
+{% endblock %}

@@ -1,0 +1,191 @@
+{% extends "base.html" %}
+
+{% block title %}Rapporter – Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-3">
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-file-text me-2 text-success"></i>Rapporter
+    </h1>
+    <div class="d-flex gap-2">
+        <a href="{{ url_for('incidents.new_incident') }}" class="btn btn-success btn-sm">
+            <i class="bi bi-plus-circle me-1"></i>Ny rapport
+        </a>
+        <a href="{{ url_for('admin.export_reports', **filters) }}"
+           class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-download me-1"></i>Exportera CSV
+        </a>
+    </div>
+</div>
+
+<!-- Filter form -->
+<div class="card mb-3">
+    <div class="card-body py-3">
+        <form method="GET" class="row g-2 align-items-end" id="filterForm">
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Läger</label>
+                <select name="camp_id" class="form-select form-select-sm">
+                    <option value="">Alla läger</option>
+                    {% for camp in camps %}
+                    <option value="{{ camp.id }}" {% if filters.camp_id == camp.id %}selected{% endif %}>
+                        {{ camp.name }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Typ</label>
+                <select name="incident_type" class="form-select form-select-sm">
+                    <option value="">Alla typer</option>
+                    {% for val, lbl in incident_types %}
+                    <option value="{{ val }}" {% if filters.incident_type == val %}selected{% endif %}>
+                        {{ lbl }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Allvarlighet</label>
+                <select name="severity" class="form-select form-select-sm">
+                    <option value="">Alla</option>
+                    {% for val, lbl in severity_levels %}
+                    <option value="{{ val }}" {% if filters.severity == val %}selected{% endif %}>
+                        {{ lbl }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Status</label>
+                <select name="status" class="form-select form-select-sm">
+                    <option value="">Alla</option>
+                    {% for val, lbl in status_options %}
+                    <option value="{{ val }}" {% if filters.status == val %}selected{% endif %}>
+                        {{ lbl }}
+                    </option>
+                    {% endfor %}
+                </select>
+            </div>
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">Fr.o.m.</label>
+                <input type="date" name="date_from" class="form-control form-control-sm"
+                       value="{{ filters.date_from }}">
+            </div>
+            <div class="col-sm-6 col-lg-2">
+                <label class="form-label small fw-semibold mb-1">T.o.m.</label>
+                <input type="date" name="date_to" class="form-control form-control-sm"
+                       value="{{ filters.date_to }}">
+            </div>
+            <div class="col-12 col-lg-8">
+                <label class="form-label small fw-semibold mb-1">Sök i text</label>
+                <input type="text" name="search" class="form-control form-control-sm"
+                       placeholder="Sök i beskrivning, inblandad person, åtgärd..."
+                       value="{{ filters.search }}">
+            </div>
+            <div class="col-12 col-lg-4 d-flex gap-2">
+                <button type="submit" class="btn btn-primary btn-sm flex-fill">
+                    <i class="bi bi-search me-1"></i>Filtrera
+                </button>
+                <a href="{{ url_for('admin.reports') }}" class="btn btn-outline-secondary btn-sm">
+                    <i class="bi bi-x"></i> Rensa
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- Results -->
+<div class="card">
+    <div class="card-header d-flex justify-content-between align-items-center">
+        <span>
+            <i class="bi bi-list me-2"></i>
+            Visar {{ incidents|length }} rapport{% if incidents|length != 1 %}er{% endif %}
+        </span>
+    </div>
+    <div class="card-body p-0">
+        {% if incidents %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>#</th>
+                        <th>Tidpunkt</th>
+                        <th>Läger</th>
+                        <th>Rapportör</th>
+                        <th>Inblandad</th>
+                        <th>Typ</th>
+                        <th>Allvarlighet</th>
+                        <th>Status</th>
+                        <th>Uppföljning</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for inc in incidents %}
+                    <tr>
+                        <td class="text-muted small">{{ inc.id }}</td>
+                        <td class="small text-nowrap">
+                            {{ inc.occurred_at.strftime('%d %b %Y') if inc.occurred_at else '–' }}<br>
+                            <span class="text-muted">{{ inc.occurred_at.strftime('%H:%M') if inc.occurred_at else '' }}</span>
+                        </td>
+                        <td class="small">{{ inc.camp.name if inc.camp else '–' }}</td>
+                        <td class="small">{{ inc.reporter.username if inc.reporter else '–' }}</td>
+                        <td class="small">
+                            {{ (inc.involved_person or '–')|truncate(30, True) }}
+                        </td>
+                        <td>
+                            <span class="badge bg-secondary">{{ inc.incident_type }}</span>
+                        </td>
+                        <td>
+                            {% if inc.severity == 'låg' %}
+                                <span class="badge badge-låg">Låg</span>
+                            {% elif inc.severity == 'medium' %}
+                                <span class="badge badge-medium">Medium</span>
+                            {% else %}
+                                <span class="badge badge-hög">Hög</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.status == 'öppen' %}
+                                <span class="badge badge-öppen">Öppen</span>
+                            {% elif inc.status == 'pågående' %}
+                                <span class="badge badge-pågående">Pågående</span>
+                            {% else %}
+                                <span class="badge badge-stängd">Stängd</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if inc.needs_followup %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-exclamation-circle me-1"></i>Ja
+                            </span>
+                            {% else %}
+                            <span class="text-muted small">–</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('incidents.view_incident', incident_id=inc.id) }}"
+                                   class="btn btn-outline-primary" title="Visa">
+                                    <i class="bi bi-eye"></i>
+                                </a>
+                                <a href="{{ url_for('incidents.edit_incident', incident_id=inc.id) }}"
+                                   class="btn btn-outline-secondary" title="Redigera">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-inbox display-4 d-block mb-2"></i>
+            Inga rapporter matchar filtreringen.
+        </div>
+        {% endif %}
+    </div>
+</div>
+{% endblock %}

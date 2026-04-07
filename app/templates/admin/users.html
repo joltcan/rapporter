@@ -1,0 +1,126 @@
+{% extends "base.html" %}
+
+{% block title %}Användare – Admin{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-people me-2 text-success"></i>Användare
+    </h1>
+    <a href="{{ url_for('admin.new_user') }}" class="btn btn-success">
+        <i class="bi bi-person-plus me-1"></i>Ny användare
+    </a>
+</div>
+
+<div class="card">
+    <div class="card-body p-0">
+        {% if users %}
+        <div class="table-responsive">
+            <table class="table table-hover mb-0">
+                <thead class="table-light">
+                    <tr>
+                        <th>Användarnamn</th>
+                        <th>Roll</th>
+                        <th>Läger</th>
+                        <th>Skapad</th>
+                        <th class="text-end">Åtgärder</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {% for user in users %}
+                    <tr>
+                        <td>
+                            <i class="bi bi-person me-1 text-muted"></i>
+                            <strong>{{ user.username }}</strong>
+                            {% if user.id == current_user.id %}
+                            <span class="badge bg-info ms-1">Dig</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.role == 'admin' %}
+                            <span class="badge bg-warning text-dark">
+                                <i class="bi bi-shield-fill me-1"></i>Admin
+                            </span>
+                            {% else %}
+                            <span class="badge bg-secondary">Användare</span>
+                            {% endif %}
+                        </td>
+                        <td>
+                            {% if user.camp %}
+                            <span class="text-muted small">
+                                <i class="bi bi-geo-alt me-1"></i>{{ user.camp.name }}
+                            </span>
+                            {% else %}
+                            <span class="text-muted small">–</span>
+                            {% endif %}
+                        </td>
+                        <td class="text-muted small">
+                            {{ user.created_at.strftime('%d %b %Y') if user.created_at else '–' }}
+                        </td>
+                        <td class="text-end">
+                            <div class="btn-group btn-group-sm">
+                                <a href="{{ url_for('admin.user_qr', user_id=user.id) }}"
+                                   class="btn btn-outline-secondary" title="QR-kod">
+                                    <i class="bi bi-qr-code"></i>
+                                </a>
+                                <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"
+                                   class="btn btn-outline-primary" title="Redigera">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
+                                {% if user.id != current_user.id %}
+                                <button type="button" class="btn btn-outline-danger"
+                                        title="Ta bort"
+                                        onclick="confirmDelete('{{ url_for('admin.delete_user', user_id=user.id) }}', '{{ user.username }}')">
+                                    <i class="bi bi-trash"></i>
+                                </button>
+                                {% endif %}
+                            </div>
+                        </td>
+                    </tr>
+                    {% endfor %}
+                </tbody>
+            </table>
+        </div>
+        {% else %}
+        <div class="text-center py-5 text-muted">
+            <i class="bi bi-people display-4 d-block mb-2"></i>
+            Inga användare hittades.
+        </div>
+        {% endif %}
+    </div>
+</div>
+
+<!-- Delete confirmation modal -->
+<div class="modal fade" id="deleteModal" tabindex="-1">
+    <div class="modal-dialog modal-sm">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h5 class="modal-title text-danger">
+                    <i class="bi bi-exclamation-triangle me-2"></i>Ta bort?
+                </h5>
+                <button type="button" class="btn-close" data-bs-dismiss="modal"></button>
+            </div>
+            <div class="modal-body">
+                Ta bort användaren <strong id="deleteTargetName"></strong>?
+            </div>
+            <div class="modal-footer">
+                <button type="button" class="btn btn-secondary" data-bs-dismiss="modal">Avbryt</button>
+                <form id="deleteForm" method="POST">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                    <button type="submit" class="btn btn-danger">Ta bort</button>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+function confirmDelete(url, name) {
+    document.getElementById('deleteForm').action = url;
+    document.getElementById('deleteTargetName').textContent = name;
+    new bootstrap.Modal(document.getElementById('deleteModal')).show();
+}
+</script>
+{% endblock %}
