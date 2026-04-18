@@ -40,6 +40,17 @@ def admin_required(f):
     return decorated
 
 
+def editor_required(f):
+    """Admins + editors. Used for the Overview dashboard, which is a
+    read-only aggregate view that is safe to share with editors."""
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        if not current_user.is_authenticated or not current_user.can_edit:
+            abort(403)
+        return f(*args, **kwargs)
+    return decorated
+
+
 # ---------------------------------------------------------------------------
 # Forms
 # ---------------------------------------------------------------------------
@@ -87,7 +98,7 @@ class CategoryForm(FlaskForm):
 
 @admin_bp.route("/")
 @login_required
-@admin_required
+@editor_required
 def dashboard():
     # Count per status (ignore statuses with zero rows gracefully).
     status_counts = {s: Ticket.query.filter_by(status=s).count() for s in STATUSES}

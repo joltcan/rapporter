@@ -10,8 +10,11 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root {
-            --scout-green: #2e7d32;
-            --scout-green-dark: #1b5e20;
+            /* Scoutblå (Pantone 2955C, RGB 0/54/96) as the primary theme
+               colour. Status badges below keep their own green/orange/red
+               palette -- those communicate ticket state, not branding. */
+            --scout-blue: #003660;
+            --scout-blue-dark: #002240;
             --scout-accent: #ffab00;
             --bs-body-bg: #f5f6f2;
         }
@@ -20,16 +23,16 @@
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
         .navbar-brand { font-weight: 700; letter-spacing: 0.02em; }
-        .bg-scout { background-color: var(--scout-green) !important; }
-        .text-scout { color: var(--scout-green) !important; }
+        .bg-scout { background-color: var(--scout-blue) !important; }
+        .text-scout { color: var(--scout-blue) !important; }
         .btn-scout {
-            background-color: var(--scout-green);
-            border-color: var(--scout-green);
+            background-color: var(--scout-blue);
+            border-color: var(--scout-blue);
             color: #fff;
         }
         .btn-scout:hover, .btn-scout:focus {
-            background-color: var(--scout-green-dark);
-            border-color: var(--scout-green-dark);
+            background-color: var(--scout-blue-dark);
+            border-color: var(--scout-blue-dark);
             color: #fff;
         }
         /* --- App shell: navbar + (sidebar | main) ---
@@ -220,7 +223,7 @@
                                     <i class="bi bi-list-ul me-2"></i>{{ _('Tickets') }}
                                 </a>
                             </li>
-                            {% if current_user.is_admin %}
+                            {% if current_user.can_edit %}
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('admin.dashboard') }}">
                                     <i class="bi bi-speedometer2 me-2"></i>{{ _('Overview') }}
@@ -263,7 +266,7 @@
         {% if current_user.is_authenticated %}
         <aside class="app-sidebar" id="sideMenu" aria-label="{{ _('Overview') }}">
             <ul class="nav flex-column">
-                {% if current_user.is_admin %}
+                {% if current_user.can_edit %}
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
                        href="{{ url_for('admin.dashboard') }}" title="{{ _('Overview') }}">
