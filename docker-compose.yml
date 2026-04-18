@@ -51,6 +51,7 @@ services:
       - ./app/static:/app/app/static
 
   caddy:
+    profiles: ["prod"]
     image: caddy:2-alpine
     restart: unless-stopped
     ports:
