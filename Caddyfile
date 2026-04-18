@@ -1,30 +1,51 @@
+# Caddyfile for Scout Tickets
+#
+# Three modes driven by CADDY_DOMAIN:
+#
+#   CADDY_DOMAIN=localhost            -> HTTP only on :80 (no internet needed)
+#                                        Suitable for running at camp without DNS or internet.
+#   CADDY_DOMAIN=rapporter.example.se -> Automatic HTTPS via Let's Encrypt.
+#                                        Requires the domain's A/AAAA records to point here
+#                                        and ports 80/443 to be reachable from the internet.
+#   CADDY_DOMAIN=localhost:443        -> Self-signed/internal CA HTTPS.
+#                                        Useful for local testing with a cert.
+#
+# Caddy picks the right mode based on the host label.
+
 {
-    # Disable automatic HTTPS redirect for localhost
-    # Use internal CA so it works offline
-    local_certs
-    auto_https off
+	# admin endpoint disabled in production (security hygiene).
+	admin off
+	# Let `auto_https off` be toggled via env var so offline deployments
+	# (no DNS, no internet) can keep serving plain HTTP without Caddy
+	# trying to grab a certificate.
+	auto_https {$CADDY_AUTO_HTTPS:on}
+	email {$CADDY_ACME_EMAIL:admin@localhost}
 }
 
+# Main site block. When CADDY_DOMAIN=localhost Caddy serves it on plain
+# HTTP port 80 (because auto_https will down-shift for the "localhost"
+# label). For real domains, Caddy requests a Let's Encrypt certificate
+# automatically.
 {$CADDY_DOMAIN:localhost} {
-    tls internal
+	reverse_proxy web:8000 {
+		header_up X-Real-IP {remote_host}
+		header_up X-Forwarded-For {remote_host}
+		header_up X-Forwarded-Proto {scheme}
+	}
 
-    reverse_proxy web:8000 {
-        header_up X-Real-IP {remote_host}
-        header_up X-Forwarded-For {remote_host}
-        header_up X-Forwarded-Proto {scheme}
-    }
+	encode gzip
 
-    encode gzip
+	header {
+		# HSTS only meaningful over HTTPS, but harmless over HTTP --
+		# browsers ignore it there.
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options "nosniff"
+		X-Frame-Options "SAMEORIGIN"
+		Referrer-Policy "strict-origin-when-cross-origin"
+	}
 
-    header {
-        Strict-Transport-Security "max-age=31536000; includeSubDomains"
-        X-Content-Type-Options "nosniff"
-        X-Frame-Options "SAMEORIGIN"
-        Referrer-Policy "strict-origin-when-cross-origin"
-    }
-
-    log {
-        output stdout
-        format json
-    }
+	log {
+		output stdout
+		format json
+	}
 }

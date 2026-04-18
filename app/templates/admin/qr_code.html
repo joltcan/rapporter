@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}QR-kod – {{ user.username }}{% endblock %}
+{% block title %}{{ _('QR code') }} – {{ user.username }}{% endblock %}
 
 {% block content %}
 <div class="d-flex align-items-center mb-4">
@@ -8,7 +8,7 @@
         <i class="bi bi-arrow-left"></i>
     </a>
     <h1 class="h3 mb-0 fw-bold">
-        <i class="bi bi-qr-code me-2 text-success"></i>QR-kod
+        <i class="bi bi-qr-code me-2 text-scout"></i>{{ _('QR code') }}
     </h1>
 </div>
 
@@ -18,26 +18,19 @@
             <div class="card-header">
                 <h5 class="mb-0 fw-semibold">
                     <i class="bi bi-person me-2"></i>{{ user.username }}
-                    {% if user.role == 'admin' %}
-                    <span class="badge bg-warning text-dark ms-1">Admin</span>
-                    {% endif %}
+                    <span class="badge bg-warning text-dark ms-1">{{ role_label(user.role) }}</span>
                 </h5>
-                {% if user.camp %}
-                <p class="text-muted small mb-0 mt-1">
-                    <i class="bi bi-geo-alt me-1"></i>{{ user.camp.name }}
-                </p>
-                {% endif %}
             </div>
             <div class="card-body py-4">
                 <div class="bg-white d-inline-block p-2 rounded border mb-3">
                     <img src="data:image/png;base64,{{ img_b64 }}"
-                         alt="QR-kod för {{ user.username }}"
+                         alt="QR code for {{ user.username }}"
                          class="img-fluid"
                          style="max-width: 250px;">
                 </div>
 
                 <div class="mb-3">
-                    <p class="text-muted small mb-1">Inloggningslänk</p>
+                    <p class="text-muted small mb-1">{{ _('Sign in') }}</p>
                     <div class="input-group input-group-sm">
                         <input type="text" class="form-control" id="loginUrl"
                                value="{{ login_url }}" readonly>
@@ -48,30 +41,14 @@
                     </div>
                 </div>
 
-                <p class="text-muted small">
-                    Skanna koden för att öppna inloggningssidan med förifyllt
-                    användarnamn <strong>{{ user.username }}</strong>.
-                </p>
-
                 <div class="d-grid gap-2">
-                    <a href="{{ url_for('admin.download_qr', user_id=user.id) }}"
-                       class="btn btn-success">
-                        <i class="bi bi-download me-2"></i>Ladda ned PNG
+                    <a href="{{ url_for('admin.download_qr', user_id=user.id) }}" class="btn btn-scout">
+                        <i class="bi bi-download me-2"></i>{{ _('Download QR code') }}
                     </a>
-                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}"
-                       class="btn btn-outline-primary">
-                        <i class="bi bi-pencil me-2"></i>Redigera användare
+                    <a href="{{ url_for('admin.edit_user', user_id=user.id) }}" class="btn btn-outline-primary">
+                        <i class="bi bi-pencil me-2"></i>{{ _('Edit user') }}
                     </a>
                 </div>
-            </div>
-        </div>
-
-        <div class="card mt-3 bg-light">
-            <div class="card-body small text-muted">
-                <i class="bi bi-info-circle me-1"></i>
-                <strong>Tips:</strong> Skriv ut och dela QR-koden med användaren.
-                Koden öppnar inloggningssidan med förifyllt användarnamn.
-                Användaren behöver fortfarande ange sitt lösenord.
             </div>
         </div>
     </div>

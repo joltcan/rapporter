@@ -1,0 +1,161 @@
+{% extends "base.html" %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4">
+    <a href="{{ url_for('tickets.list_tickets') }}" class="btn btn-sm btn-outline-secondary me-3">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-file-plus me-2 text-scout"></i>{{ title }}
+    </h1>
+</div>
+
+<form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="row g-4">
+        <div class="col-lg-8">
+
+            <!-- Title, description, feedback -->
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-pencil me-2"></i>{{ _('Ticket') if false else _('Description') }}</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="title">{{ _('Title') }}</label>
+                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""),
+                           id="title", placeholder=_('Ticket title (optional, shown on dashboards)')) }}
+                    </div>
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="description">{{ _('Description') }} <span class="text-danger">*</span></label>
+                        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""),
+                           id="description", placeholder=_('Describe what happened')) }}
+                        {% for error in form.description.errors %}
+                        <div class="invalid-feedback">{{ _(error) }}</div>
+                        {% endfor %}
+                    </div>
+                    <div class="mb-0">
+                        <label class="form-label fw-semibold" for="feedback">{{ _('Feedback') }}</label>
+                        {{ form.feedback(class="form-control" + (" is-invalid" if form.feedback.errors else ""),
+                           id="feedback", placeholder=_('Short feedback line')) }}
+                    </div>
+                </div>
+            </div>
+
+            <!-- Classification -->
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-tags me-2"></i>{{ _('Category') }} &amp; {{ _('Priority') }}</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="category">{{ _('Category') }}</label>
+                            {{ form.category(class="form-control" + (" is-invalid" if form.category.errors else ""),
+                               id="category", list="category-list",
+                               placeholder=_('Choose or type a new category'),
+                               autocomplete="off") }}
+                            <datalist id="category-list">
+                                {% for c in categories %}
+                                <option value="{{ c.display_name }}"></option>
+                                {% endfor %}
+                            </datalist>
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="priority">{{ _('Priority') }}</label>
+                            <select name="priority" id="priority" class="form-select">
+                                {% for value, _lbl in form.priority.choices %}
+                                <option value="{{ value }}" {% if form.priority.data == value %}selected{% endif %}>
+                                    {{ priority_label_long(value) }}
+                                </option>
+                                {% endfor %}
+                            </select>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Timestamps -->
+            <div class="card mb-3">
+                <div class="card-header"><i class="bi bi-clock me-2"></i>{{ _('Created') }} / {{ _('Closed') }}</div>
+                <div class="card-body">
+                    <div class="row g-3">
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="created_at">{{ _('Created') }}</label>
+                            {{ form.created_at(class="form-control" + (" is-invalid" if form.created_at.errors else ""),
+                               id="created_at") }}
+                            {% for error in form.created_at.errors %}
+                            <div class="invalid-feedback">{{ _(error) }}</div>
+                            {% endfor %}
+                        </div>
+                        <div class="col-md-6">
+                            <label class="form-label fw-semibold" for="closed_at">{{ _('Closed') }}</label>
+                            {{ form.closed_at(class="form-control" + (" is-invalid" if form.closed_at.errors else ""),
+                               id="closed_at") }}
+                            <div class="form-text">
+                                {{ _('Auto-filled when status is set to Resolved or Rejected.') if false else '' }}
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- Sidebar -->
+        <div class="col-lg-4">
+            <div class="card sticky-top" style="top: 80px;">
+                <div class="card-header"><i class="bi bi-gear me-2"></i>{{ _('Status') }}</div>
+                <div class="card-body">
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="status">{{ _('Status') }}</label>
+                        <select name="status" id="status" class="form-select">
+                            {% for value, _lbl in form.status.choices %}
+                            <option value="{{ value }}" {% if form.status.data == value %}selected{% endif %}>
+                                {{ status_label(value) }}
+                            </option>
+                            {% endfor %}
+                        </select>
+                    </div>
+
+                    <div class="mb-3 form-check form-switch">
+                        {{ form.is_public(class="form-check-input", id="is_public") }}
+                        <label class="form-check-label fw-semibold" for="is_public">
+                            {{ _('Make this ticket public') }}
+                        </label>
+                        <div class="form-text small">
+                            {{ _('Public tickets can be viewed by anyone with the link. Only status, category, created and closed times are shown.') }}
+                        </div>
+                    </div>
+
+                    {% if ticket %}
+                    <div class="mb-3 p-2 bg-light rounded small text-muted">
+                        <div><i class="bi bi-person me-1"></i>{{ ticket.reporter.username if ticket.reporter else '–' }}</div>
+                        <div><i class="bi bi-database me-1"></i>DB {{ ticket.db_created_at.strftime('%d %b %Y %H:%M') if ticket.db_created_at }}</div>
+                    </div>
+                    {% endif %}
+
+                    <div class="d-grid gap-2">
+                        <button type="submit" class="btn btn-scout">{{ _('Save ticket') }}</button>
+                        <a href="{{ url_for('tickets.list_tickets') }}" class="btn btn-outline-secondary">
+                            {{ _('Cancel') }}
+                        </a>
+                    </div>
+
+                    {% if ticket and current_user.is_admin %}
+                    <hr>
+                    <form method="POST"
+                          action="{{ url_for('tickets.delete_ticket', ticket_id=ticket.id) }}"
+                          onsubmit="return confirm('{{ _('Delete') }}?')">
+                        <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                        <div class="d-grid">
+                            <button type="submit" class="btn btn-outline-danger btn-sm">
+                                <i class="bi bi-trash me-1"></i>{{ _('Delete') }}
+                            </button>
+                        </div>
+                    </form>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+</form>
+{% endblock %}

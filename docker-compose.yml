@@ -1,4 +1,10 @@
-version: "3.9"
+# The stack:
+#   db    -- PostgreSQL (official Alpine image, runs as non-root by default)
+#   web   -- Flask + Gunicorn (custom image, runs as the `appuser` user)
+#   caddy -- Reverse proxy with optional HTTPS (official Alpine image)
+#
+# Offline mode: set CADDY_DOMAIN=localhost and BASE_URL=http://<lan-ip> in .env.
+# Public mode:  set CADDY_DOMAIN to a real hostname and keep CADDY_AUTO_HTTPS=on.
 
 services:
   db:
@@ -11,7 +17,11 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-rapporter} -d ${POSTGRES_DB:-rapporter}"]
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -U ${POSTGRES_USER:-rapporter} -d ${POSTGRES_DB:-rapporter}",
+        ]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -26,7 +36,12 @@ services:
       DATABASE_URL: ${DATABASE_URL:-postgresql://rapporter:rapporter@db:5432/rapporter}
       FLASK_APP: wsgi.py
       FLASK_ENV: ${FLASK_ENV:-production}
-      BASE_URL: ${BASE_URL:-https://localhost}
+      BASE_URL: ${BASE_URL:-http://localhost}
+      # When running over plain HTTP (camp/offline mode) the secure
+      # cookie flag has to be disabled, otherwise the browser refuses to
+      # send the session cookie back and login silently fails.
+      ALLOW_INSECURE_COOKIES: ${ALLOW_INSECURE_COOKIES:-0}
+      SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
     depends_on:
       db:
         condition: service_healthy
@@ -43,6 +58,8 @@ services:
       - "443:443"
     environment:
       CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
+      CADDY_AUTO_HTTPS: ${CADDY_AUTO_HTTPS:-on}
+      CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:-admin@localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
       - caddy_data:/data

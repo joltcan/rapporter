@@ -1,57 +1,76 @@
 <!DOCTYPE html>
-<html lang="sv">
+<html lang="{{ current_locale() }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% block title %}Scoutläger Rapporter{% endblock %}</title>
+    <title>{% block title %}{{ _('Scout Tickets') }}{% endblock %}</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
           integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
           crossorigin="anonymous">
     <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
     <style>
         :root {
-            --bs-body-bg: #f8f9fa;
+            --scout-green: #2e7d32;
+            --scout-green-dark: #1b5e20;
+            --scout-accent: #ffab00;
+            --bs-body-bg: #f5f6f2;
         }
         body {
             background-color: var(--bs-body-bg);
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-        .navbar-brand {
-            font-weight: 700;
-            letter-spacing: 0.02em;
+        .navbar-brand { font-weight: 700; letter-spacing: 0.02em; }
+        .bg-scout { background-color: var(--scout-green) !important; }
+        .text-scout { color: var(--scout-green) !important; }
+        .btn-scout {
+            background-color: var(--scout-green);
+            border-color: var(--scout-green);
+            color: #fff;
+        }
+        .btn-scout:hover, .btn-scout:focus {
+            background-color: var(--scout-green-dark);
+            border-color: var(--scout-green-dark);
+            color: #fff;
         }
         .sidebar {
             min-height: calc(100vh - 56px);
             background: #fff;
             border-right: 1px solid #dee2e6;
         }
-        .sidebar .nav-link {
-            color: #495057;
-            border-radius: 0.375rem;
-            margin-bottom: 2px;
+        .sidebar .nav-link { color: #495057; border-radius: 0.375rem; margin-bottom: 2px; }
+        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+            background-color: #e9ecef; color: #212529;
         }
-        .sidebar .nav-link:hover,
-        .sidebar .nav-link.active {
-            background-color: #e9ecef;
-            color: #212529;
+        .sidebar .nav-link i { width: 20px; }
+        .main-content { min-height: calc(100vh - 56px); }
+
+        /* Priority badges */
+        .badge-p1 { background-color: #c62828; color: #fff; }
+        .badge-p2 { background-color: #ef6c00; color: #fff; }
+        .badge-p3 { background-color: #2e7d32; color: #fff; }
+
+        /* Status badges */
+        .badge-ny          { background-color: #1565c0; color: #fff; }
+        .badge-paborjad    { background-color: #ef6c00; color: #fff; }
+        .badge-avslutad    { background-color: #2e7d32; color: #fff; }
+        .badge-pausad      { background-color: #6d4c41; color: #fff; }
+        .badge-avvisad     { background-color: #616161; color: #fff; }
+
+        .card {
+            border: none;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.08);
+            border-radius: 0.75rem;
         }
-        .sidebar .nav-link i {
-            width: 20px;
+        .card-header {
+            background-color: #fff;
+            border-bottom: 2px solid #f0f0f0;
+            font-weight: 600;
+            border-top-left-radius: 0.75rem !important;
+            border-top-right-radius: 0.75rem !important;
         }
-        .main-content {
-            min-height: calc(100vh - 56px);
-        }
-        .badge-låg { background-color: #28a745; }
-        .badge-medium { background-color: #fd7e14; }
-        .badge-hög { background-color: #dc3545; }
-        .badge-öppen { background-color: #0d6efd; }
-        .badge-pågående { background-color: #fd7e14; }
-        .badge-stängd { background-color: #6c757d; }
-        .card { border: none; box-shadow: 0 1px 3px rgba(0,0,0,0.1); }
-        .card-header { background-color: #fff; border-bottom: 2px solid #f0f0f0; font-weight: 600; }
         @media print {
-            .navbar, .sidebar, .btn, form { display: none !important; }
+            .navbar, .sidebar, .btn, form.no-print { display: none !important; }
         }
-        /* Mobile improvements */
         @media (max-width: 768px) {
             .table-responsive { font-size: 0.875rem; }
             .sidebar { min-height: auto; border-right: none; border-bottom: 1px solid #dee2e6; }
@@ -60,57 +79,71 @@
     {% block extra_head %}{% endblock %}
 </head>
 <body>
-    <!-- Navbar -->
-    <nav class="navbar navbar-expand-lg navbar-dark bg-success">
+    <nav class="navbar navbar-expand-lg navbar-dark bg-scout">
         <div class="container-fluid">
             <a class="navbar-brand" href="{{ url_for('index') }}">
-                <i class="bi bi-shield-check me-2"></i>Scout Rapporter
+                <i class="bi bi-shield-check me-2"></i>{{ _('Scout Tickets') }}
             </a>
             <button class="navbar-toggler" type="button" data-bs-toggle="collapse"
-                    data-bs-target="#navbarNav" aria-controls="navbarNav"
-                    aria-expanded="false" aria-label="Öppna navigering">
+                    data-bs-target="#mainNav" aria-controls="mainNav"
+                    aria-expanded="false" aria-label="Menu">
                 <span class="navbar-toggler-icon"></span>
             </button>
-            <div class="collapse navbar-collapse" id="navbarNav">
-                {% if current_user.is_authenticated %}
+            <div class="collapse navbar-collapse" id="mainNav">
                 <ul class="navbar-nav ms-auto align-items-lg-center">
+                    <!-- Language switcher -->
+                    <li class="nav-item dropdown me-lg-2">
+                        <a class="nav-link dropdown-toggle" href="#" role="button"
+                           data-bs-toggle="dropdown" aria-expanded="false">
+                            <i class="bi bi-translate me-1"></i>{{ current_locale()|upper }}
+                        </a>
+                        <ul class="dropdown-menu dropdown-menu-end">
+                            {% for loc in supported_locales %}
+                            <li>
+                                <a class="dropdown-item {% if loc == current_locale() %}active{% endif %}"
+                                   href="{{ url_for('set_language', lang=loc, next=request.path) }}">
+                                    {{ loc|upper }}
+                                </a>
+                            </li>
+                            {% endfor %}
+                        </ul>
+                    </li>
+
+                    {% if current_user.is_authenticated %}
                     <li class="nav-item dropdown">
                         <a class="nav-link dropdown-toggle" href="#" role="button"
                            data-bs-toggle="dropdown" aria-expanded="false">
                             <i class="bi bi-person-circle me-1"></i>
                             {{ current_user.username }}
-                            {% if current_user.is_admin %}
-                            <span class="badge bg-warning text-dark ms-1">Admin</span>
-                            {% endif %}
+                            <span class="badge bg-warning text-dark ms-1">{{ role_label(current_user.role) }}</span>
                         </a>
                         <ul class="dropdown-menu dropdown-menu-end">
                             <li>
-                                <a class="dropdown-item" href="{{ url_for('incidents.list_incidents') }}">
-                                    <i class="bi bi-list-ul me-2"></i>Mina rapporter
+                                <a class="dropdown-item" href="{{ url_for('tickets.list_tickets') }}">
+                                    <i class="bi bi-list-ul me-2"></i>{{ _('Tickets') }}
                                 </a>
                             </li>
                             {% if current_user.is_admin %}
                             <li>
                                 <a class="dropdown-item" href="{{ url_for('admin.dashboard') }}">
-                                    <i class="bi bi-speedometer2 me-2"></i>Adminpanel
+                                    <i class="bi bi-speedometer2 me-2"></i>{{ _('Overview') }}
                                 </a>
                             </li>
                             {% endif %}
                             <li><hr class="dropdown-divider"></li>
                             <li>
                                 <a class="dropdown-item text-danger" href="{{ url_for('auth.logout') }}">
-                                    <i class="bi bi-box-arrow-right me-2"></i>Logga ut
+                                    <i class="bi bi-box-arrow-right me-2"></i>{{ _('Sign out') }}
                                 </a>
                             </li>
                         </ul>
                     </li>
+                    {% endif %}
                 </ul>
-                {% endif %}
             </div>
         </div>
     </nav>
 
-    <!-- Flash messages -->
     {% with messages = get_flashed_messages(with_categories=true) %}
     {% if messages %}
     <div class="container-fluid mt-2">
@@ -121,61 +154,63 @@
             {% if category == 'warning' %}<i class="bi bi-exclamation-circle me-2"></i>{% endif %}
             {% if category == 'info' %}<i class="bi bi-info-circle me-2"></i>{% endif %}
             {{ message }}
-            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Stäng"></button>
+            <button type="button" class="btn-close" data-bs-dismiss="alert" aria-label="Close"></button>
         </div>
         {% endfor %}
     </div>
     {% endif %}
     {% endwith %}
 
-    <!-- Main layout -->
     {% block body %}
     <div class="container-fluid">
         <div class="row">
-            {% if current_user.is_authenticated and current_user.is_admin %}
-            <!-- Admin sidebar -->
+            {% if current_user.is_authenticated %}
             <div class="col-lg-2 col-md-3 px-0 sidebar d-none d-md-block">
                 <div class="p-3">
-                    <p class="text-muted small text-uppercase fw-semibold mb-2">Navigering</p>
+                    <p class="text-muted small text-uppercase fw-semibold mb-2">{{ _('Navigation') if false else _('Overview') }}</p>
                     <ul class="nav flex-column">
+                        {% if current_user.is_admin %}
                         <li class="nav-item">
                             <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
                                href="{{ url_for('admin.dashboard') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>Översikt
+                                <i class="bi bi-speedometer2 me-2"></i>{{ _('Overview') }}
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
-                            <a class="nav-link {% if 'admin.reports' in request.endpoint or 'export' in request.endpoint %}active{% endif %}"
-                               href="{{ url_for('admin.reports') }}">
-                                <i class="bi bi-file-text me-2"></i>Rapporter
+                            <a class="nav-link {% if request.endpoint == 'tickets.list_tickets' %}active{% endif %}"
+                               href="{{ url_for('tickets.list_tickets') }}">
+                                <i class="bi bi-list-ul me-2"></i>{{ _('Tickets') }}
                             </a>
                         </li>
+                        {% if current_user.can_edit %}
                         <li class="nav-item">
-                            <a class="nav-link {% if 'admin.camps' in request.endpoint or 'camp' in request.endpoint %}active{% endif %}"
-                               href="{{ url_for('admin.camps') }}">
-                                <i class="bi bi-geo-alt me-2"></i>Läger
+                            <a class="nav-link {% if request.endpoint == 'tickets.new_ticket' %}active{% endif %}"
+                               href="{{ url_for('tickets.new_ticket') }}">
+                                <i class="bi bi-plus-circle me-2"></i>{{ _('New ticket') }}
                             </a>
                         </li>
+                        {% endif %}
                         <li class="nav-item">
-                            <a class="nav-link {% if 'admin.users' in request.endpoint or 'user' in request.endpoint %}active{% endif %}"
+                            <a class="nav-link" href="{{ url_for('tickets.tv_dashboard') }}" target="_blank">
+                                <i class="bi bi-tv me-2"></i>{{ _('TV dashboard') }}
+                            </a>
+                        </li>
+                        {% if current_user.is_admin %}
+                        <li class="nav-item mt-3"><hr class="my-1"></li>
+                        <li class="nav-item">
+                            <a class="nav-link {% if 'admin.users' in request.endpoint or 'admin.new_user' in request.endpoint or 'admin.edit_user' in request.endpoint or 'admin.user_qr' in request.endpoint %}active{% endif %}"
                                href="{{ url_for('admin.users') }}">
-                                <i class="bi bi-people me-2"></i>Användare
-                            </a>
-                        </li>
-                        <li class="nav-item mt-2">
-                            <hr class="my-1">
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint and 'incidents' in request.endpoint %}active{% endif %}"
-                               href="{{ url_for('incidents.list_incidents') }}">
-                                <i class="bi bi-list-ul me-2"></i>Mina rapporter
+                                <i class="bi bi-people me-2"></i>{{ _('Users') }}
                             </a>
                         </li>
                         <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('incidents.new_incident') }}">
-                                <i class="bi bi-plus-circle me-2"></i>Ny rapport
+                            <a class="nav-link {% if request.endpoint == 'admin.categories' %}active{% endif %}"
+                               href="{{ url_for('admin.categories') }}">
+                                <i class="bi bi-tags me-2"></i>{{ _('Categories') }}
                             </a>
                         </li>
+                        {% endif %}
                     </ul>
                 </div>
             </div>
@@ -185,7 +220,7 @@
             {% else %}
             <div class="col-12 main-content p-4">
                 {% block content_full %}
-                {% block content %}{% endblock %}
+                {% block content_anon %}{% endblock %}
                 {% endblock %}
             </div>
             {% endif %}

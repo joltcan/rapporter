@@ -1,6 +1,6 @@
 {% extends "base.html" %}
 
-{% block title %}Logga in – Scout Rapporter{% endblock %}
+{% block title %}{{ _('Sign in') }} – {{ _('Scout Tickets') }}{% endblock %}
 
 {% block body %}
 <div class="min-vh-100 d-flex align-items-center justify-content-center bg-light">
@@ -8,14 +8,14 @@
         <div class="row justify-content-center">
             <div class="col-sm-10 col-md-7 col-lg-5 col-xl-4">
                 <div class="text-center mb-4">
-                    <i class="bi bi-shield-check text-success" style="font-size: 3rem;"></i>
-                    <h1 class="h3 mt-2 fw-bold text-success">Scout Rapporter</h1>
-                    <p class="text-muted">Incidentrapporteringssystem</p>
+                    <i class="bi bi-shield-check text-scout" style="font-size: 3rem;"></i>
+                    <h1 class="h3 mt-2 fw-bold text-scout">{{ _('Scout Tickets') }}</h1>
+                    <p class="text-muted">{{ _('Ticket system') }}</p>
                 </div>
 
                 <div class="card shadow-sm">
                     <div class="card-body p-4">
-                        <h2 class="card-title h5 mb-4 fw-semibold">Logga in</h2>
+                        <h2 class="card-title h5 mb-3 fw-semibold">{{ _('Sign in') }}</h2>
 
                         {% with messages = get_flashed_messages(with_categories=true) %}
                         {% if messages %}
@@ -31,43 +31,45 @@
                             {{ form.hidden_tag() }}
 
                             <div class="mb-3">
-                                {{ form.username.label(class="form-label") }}
+                                <label class="form-label" for="username">{{ _('Username') }}</label>
                                 {{ form.username(class="form-control" + (" is-invalid" if form.username.errors else ""),
-                                   autocomplete="username") }}
+                                   id="username") }}
                                 {% for error in form.username.errors %}
-                                <div class="invalid-feedback">{{ error }}</div>
+                                <div class="invalid-feedback">{{ _(error) }}</div>
                                 {% endfor %}
                             </div>
 
                             <div class="mb-3">
-                                {{ form.password.label(class="form-label") }}
+                                <label class="form-label" for="password">{{ _('Password') }}</label>
                                 <div class="input-group">
                                     {{ form.password(class="form-control" + (" is-invalid" if form.password.errors else ""),
-                                       id="password", autocomplete="current-password") }}
+                                       id="password") }}
                                     <button class="btn btn-outline-secondary" type="button" id="togglePassword"
-                                            aria-label="Visa/dölj lösenord">
+                                            aria-label="Show/hide password">
                                         <i class="bi bi-eye" id="toggleIcon"></i>
                                     </button>
                                     {% for error in form.password.errors %}
-                                    <div class="invalid-feedback">{{ error }}</div>
+                                    <div class="invalid-feedback">{{ _(error) }}</div>
                                     {% endfor %}
                                 </div>
                             </div>
 
                             <div class="mb-3 form-check">
-                                {{ form.remember(class="form-check-input") }}
-                                {{ form.remember.label(class="form-check-label") }}
+                                {{ form.remember(class="form-check-input", id="remember") }}
+                                <label class="form-check-label" for="remember">{{ _('Remember me') }}</label>
                             </div>
 
                             <div class="d-grid">
-                                {{ form.submit(class="btn btn-success btn-lg") }}
+                                <button type="submit" class="btn btn-scout btn-lg">
+                                    {{ _('Sign in') }}
+                                </button>
                             </div>
                         </form>
                     </div>
                 </div>
 
                 <p class="text-center text-muted small mt-3">
-                    <i class="bi bi-lock me-1"></i>Säker inloggning
+                    <i class="bi bi-lock me-1"></i>{{ _('Log in with the account your administrator gave you.') }}
                 </p>
             </div>
         </div>

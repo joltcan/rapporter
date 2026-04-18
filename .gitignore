@@ -12,3 +12,4 @@ instance/
 .mypy_cache/
 caddy_data/
 caddy_config/
+.claude/

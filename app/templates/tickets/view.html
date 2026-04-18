@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Ticket #') }}{{ ticket.id }}{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-4 flex-wrap gap-2">
+    <a href="{{ url_for('tickets.list_tickets') }}" class="btn btn-sm btn-outline-secondary me-2">
+        <i class="bi bi-arrow-left"></i>
+    </a>
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-file-text me-2 text-scout"></i>{{ _('Ticket #') }}{{ ticket.id }}
+    </h1>
+    <span class="badge badge-p{{ ticket.priority }} ms-2 fs-6">{{ priority_label(ticket.priority) }}</span>
+    <span class="badge badge-{{ ticket.status }} fs-6">{{ status_label(ticket.status) }}</span>
+    {% if ticket.is_public %}
+    <span class="badge bg-info fs-6"><i class="bi bi-globe me-1"></i>{{ _('Public') }}</span>
+    {% endif %}
+    <div class="ms-auto d-flex gap-2">
+        {% if current_user.can_edit %}
+        <a href="{{ url_for('tickets.edit_ticket', ticket_id=ticket.id) }}" class="btn btn-primary btn-sm">
+            <i class="bi bi-pencil me-1"></i>{{ _('Edit') }}
+        </a>
+        {% endif %}
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-printer me-1"></i>Print
+        </button>
+    </div>
+</div>
+
+{% if ticket.is_public %}
+<div class="alert alert-info py-2 d-flex align-items-center">
+    <i class="bi bi-globe me-2"></i>
+    {{ _('This ticket is public — anyone with the link can see its status.') }}
+</div>
+{% endif %}
+
+<div class="row g-4">
+    <div class="col-lg-8">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i>{{ _('Ticket') if false else _('Description') }}</div>
+            <div class="card-body">
+                {% if ticket.title %}
+                <h5 class="fw-bold mb-3">{{ ticket.title }}</h5>
+                {% endif %}
+                <p class="mb-0" style="white-space: pre-wrap;">{{ ticket.description }}</p>
+            </div>
+        </div>
+
+        {% if ticket.feedback %}
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-reply me-2"></i>{{ _('Feedback') }}</div>
+            <div class="card-body">
+                <p class="mb-0">{{ ticket.feedback }}</p>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- History -->
+        <div class="card mb-3">
+            <div class="card-header d-flex justify-content-between align-items-center">
+                <span><i class="bi bi-clock-history me-2"></i>{{ _('Change log') }}</span>
+                <button class="btn btn-sm btn-outline-secondary" type="button"
+                        data-bs-toggle="collapse" data-bs-target="#historyBody"
+                        aria-expanded="false" aria-controls="historyBody">
+                    <span id="historyToggleLabel">{{ _('Show history') }}</span>
+                </button>
+            </div>
+            <div id="historyBody" class="collapse">
+                <div class="card-body">
+                    {% if history %}
+                    <ul class="list-unstyled mb-0">
+                        {% for h in history %}
+                        <li class="mb-2 small">
+                            <span class="text-muted">{{ h.changed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                            &middot;
+                            <strong>{{ h.user.username if h.user else '—' }}</strong>
+                            {% if h.field == '__created__' %}
+                            {{ _('created ticket') }}
+                            {% else %}
+                            {{ _('changed') }} <code>{{ h.field }}</code>
+                            {{ _('from') }} <em>{{ h.old_value if h.old_value is not none else _('(empty)') }}</em>
+                            {{ _('to') }} <em>{{ h.new_value if h.new_value is not none else _('(empty)') }}</em>
+                            {% endif %}
+                        </li>
+                        {% endfor %}
+                    </ul>
+                    {% else %}
+                    <p class="text-muted mb-0">{{ _('No changes yet.') }}</p>
+                    {% endif %}
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Sidebar -->
+    <div class="col-lg-4">
+        <div class="card mb-3">
+            <div class="card-header"><i class="bi bi-info-circle me-2"></i>{{ _('Overview') }}</div>
+            <div class="card-body small">
+                <dl class="row mb-0">
+                    <dt class="col-5">{{ _('Category') }}</dt>
+                    <dd class="col-7">
+                        {% if ticket.category %}<span class="badge bg-light text-dark border">{{ ticket.category.display_name }}</span>
+                        {% else %}–{% endif %}
+                    </dd>
+                    <dt class="col-5">{{ _('Created') }}</dt>
+                    <dd class="col-7">{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else '–' }}</dd>
+                    <dt class="col-5">{{ _('Updated') }}</dt>
+                    <dd class="col-7">{{ ticket.updated_at.strftime('%Y-%m-%d %H:%M') if ticket.updated_at else '–' }}</dd>
+                    <dt class="col-5">{{ _('Closed') }}</dt>
+                    <dd class="col-7">{{ ticket.closed_at.strftime('%Y-%m-%d %H:%M') if ticket.closed_at else '–' }}</dd>
+                    <dt class="col-5">{{ _('Reporter') }}</dt>
+                    <dd class="col-7">{{ ticket.reporter.username if ticket.reporter else '–' }}</dd>
+                </dl>
+            </div>
+        </div>
+
+        <div class="card mb-3 text-center">
+            <div class="card-header"><i class="bi bi-qr-code me-2"></i>{{ _('Share link') }}</div>
+            <div class="card-body">
+                <img src="data:image/png;base64,{{ qr_b64 }}"
+                     alt="QR" class="img-fluid mb-2" style="max-width: 220px;">
+                <div class="small text-muted mb-2">{{ _('Scan to open this ticket') }}</div>
+                <div class="input-group input-group-sm mb-2">
+                    <input type="text" class="form-control" value="{{ share_url }}" readonly id="shareUrl">
+                    <button class="btn btn-outline-secondary" type="button" onclick="copyShare()">
+                        <i class="bi bi-clipboard"></i>
+                    </button>
+                </div>
+                <a href="{{ url_for('tickets.ticket_qr_png', ticket_id=ticket.id) }}" class="btn btn-sm btn-outline-secondary">
+                    <i class="bi bi-download me-1"></i>{{ _('Download QR code') }}
+                </a>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_scripts %}
+<script>
+const histCollapse = document.getElementById('historyBody');
+const histLabel = document.getElementById('historyToggleLabel');
+const showTxt = {{ _('Show history')|tojson }};
+const hideTxt = {{ _('Hide history')|tojson }};
+histCollapse.addEventListener('shown.bs.collapse', () => histLabel.textContent = hideTxt);
+histCollapse.addEventListener('hidden.bs.collapse', () => histLabel.textContent = showTxt);
+
+function copyShare() {
+    const el = document.getElementById('shareUrl');
+    el.select();
+    el.setSelectionRange(0, 99999);
+    navigator.clipboard.writeText(el.value);
+}
+</script>
+{% endblock %}

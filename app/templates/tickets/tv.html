@@ -1,0 +1,185 @@
+<!DOCTYPE html>
+<html lang="{{ current_locale() }}">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <!-- Auto-refresh every 60 seconds so the board stays current without
+         requiring an open browser tab for manual reloads. -->
+    <meta http-equiv="refresh" content="60">
+    <title>{{ _('Live ticket board') }}</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/css/bootstrap.min.css" rel="stylesheet"
+          integrity="sha384-QWTKZyjpPEjISv5WaRU9OFeRpok6YctnYmDr5pNlyT2bRjXh0JMhjY6hW+ALEwIH"
+          crossorigin="anonymous">
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.min.css" rel="stylesheet">
+    <style>
+        :root {
+            --scout-green: #2e7d32;
+            --col-ny: #1565c0;
+            --col-paborjad: #ef6c00;
+            --col-avslutad: #2e7d32;
+        }
+        body {
+            background: #0d1117;
+            color: #f0f6fc;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            margin: 0;
+            padding: 0;
+            min-height: 100vh;
+        }
+        .tv-header {
+            padding: 1rem 1.5rem;
+            border-bottom: 1px solid #30363d;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tv-header h1 {
+            margin: 0;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: #fff;
+        }
+        .tv-clock { font-size: 1.3rem; color: #8b949e; }
+        .tv-columns {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 1rem;
+            padding: 1rem;
+            height: calc(100vh - 70px);
+            box-sizing: border-box;
+        }
+        .tv-col {
+            background: #161b22;
+            border-radius: 12px;
+            padding: 0.75rem;
+            overflow-y: auto;
+            border-top: 4px solid var(--scout-green);
+        }
+        .tv-col.col-ny          { border-top-color: var(--col-ny); }
+        .tv-col.col-paborjad    { border-top-color: var(--col-paborjad); }
+        .tv-col.col-avslutad    { border-top-color: var(--col-avslutad); }
+        .tv-col h2 {
+            font-size: 1.3rem;
+            font-weight: 700;
+            margin: 0.25rem 0 0.75rem;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+        .tv-col h2 .count {
+            background: #30363d;
+            color: #f0f6fc;
+            border-radius: 999px;
+            padding: 0.1rem 0.7rem;
+            font-size: 0.9rem;
+        }
+        .tv-card {
+            background: #1f2832;
+            border-radius: 8px;
+            padding: 0.7rem 0.85rem;
+            margin-bottom: 0.6rem;
+            border-left: 6px solid transparent;
+        }
+        .tv-card.p1 { border-left-color: #ef5350; }
+        .tv-card.p2 { border-left-color: #ffb74d; }
+        .tv-card.p3 { border-left-color: #81c784; }
+        .tv-card .row1 {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 0.25rem;
+        }
+        .tv-card .id { color: #8b949e; font-weight: 600; font-family: ui-monospace, SFMono-Regular, monospace; }
+        .tv-card .priority {
+            font-weight: 700;
+            font-size: 0.85rem;
+            padding: 0.1rem 0.55rem;
+            border-radius: 4px;
+            color: #fff;
+        }
+        .tv-card.p1 .priority { background: #c62828; }
+        .tv-card.p2 .priority { background: #ef6c00; }
+        .tv-card.p3 .priority { background: #2e7d32; }
+        .tv-card .title {
+            font-size: 1rem;
+            color: #f0f6fc;
+            line-height: 1.3;
+            margin: 0.1rem 0;
+        }
+        .tv-card .meta {
+            color: #8b949e;
+            font-size: 0.8rem;
+        }
+        .tv-empty {
+            text-align: center;
+            color: #6e7681;
+            padding: 2rem 0;
+            font-style: italic;
+        }
+        .tv-footer {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            color: #6e7681;
+            font-size: 0.8rem;
+        }
+    </style>
+</head>
+<body>
+    <div class="tv-header">
+        <h1><i class="bi bi-shield-check me-2"></i>{{ _('Live ticket board') }}</h1>
+        <div class="tv-clock" id="clock"></div>
+    </div>
+
+    <div class="tv-columns">
+        {% for status in visible_statuses %}
+        <div class="tv-col col-{{ status }}">
+            <h2>
+                <span>{{ status_label(status) }}</span>
+                <span class="count">{{ columns[status]|length }}</span>
+            </h2>
+            {% if columns[status] %}
+                {% for t in columns[status] %}
+                <div class="tv-card p{{ t.priority }}">
+                    <div class="row1">
+                        <span class="id">#{{ t.id }}</span>
+                        <span class="priority">P{{ t.priority }}</span>
+                    </div>
+                    {% if t.title %}
+                    <div class="title">{{ t.title }}</div>
+                    {% endif %}
+                    <div class="meta">
+                        <i class="bi bi-clock me-1"></i>
+                        {% if status == 'avslutad' and t.closed_at %}
+                            {{ t.closed_at.strftime('%d %b %H:%M') }}
+                        {% else %}
+                            {{ t.created_at.strftime('%d %b %H:%M') if t.created_at }}
+                        {% endif %}
+                    </div>
+                </div>
+                {% endfor %}
+            {% else %}
+                <div class="tv-empty">—</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    </div>
+
+    <div class="tv-footer">
+        <i class="bi bi-arrow-repeat me-1"></i>{{ _('Updated %(time)s', time='') }}<span id="updated"></span>
+    </div>
+
+    <script>
+        function updateClock() {
+            const now = new Date();
+            const hh = String(now.getHours()).padStart(2, '0');
+            const mm = String(now.getMinutes()).padStart(2, '0');
+            const ss = String(now.getSeconds()).padStart(2, '0');
+            document.getElementById('clock').textContent = `${hh}:${mm}:${ss}`;
+            document.getElementById('updated').textContent = ` ${hh}:${mm}`;
+        }
+        updateClock();
+        setInterval(updateClock, 1000);
+    </script>
+</body>
+</html>

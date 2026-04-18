@@ -1,0 +1,82 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Categories') }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-tags me-2 text-scout"></i>{{ _('Manage categories') }}
+    </h1>
+</div>
+
+<div class="row g-3">
+    <div class="col-lg-5">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-plus-circle me-2"></i>{{ _('New category') }}</div>
+            <div class="card-body">
+                <form method="POST" novalidate>
+                    {{ form.hidden_tag() }}
+                    <div class="mb-3">
+                        <label class="form-label fw-semibold" for="cat_name">{{ _('Category name') }}</label>
+                        {{ form.name(class="form-control" + (" is-invalid" if form.name.errors else ""),
+                           id="cat_name", autocomplete="off") }}
+                        {% for error in form.name.errors %}
+                        <div class="invalid-feedback">{{ _(error) }}</div>
+                        {% endfor %}
+                    </div>
+                    <button type="submit" class="btn btn-scout">{{ _('Save') }}</button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div class="col-lg-7">
+        <div class="card">
+            <div class="card-header"><i class="bi bi-list-ul me-2"></i>{{ _('Categories') }}</div>
+            <div class="card-body p-0">
+                {% if categories %}
+                <table class="table table-hover mb-0">
+                    <thead class="table-light">
+                        <tr>
+                            <th>{{ _('Category') }}</th>
+                            <th class="text-end">{{ _('Used in') }}</th>
+                            <th class="text-end">{{ _('Actions') }}</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for cat in categories %}
+                        <tr>
+                            <td>
+                                <i class="bi bi-tag me-1 text-muted"></i>
+                                {{ cat.display_name[:1]|upper }}{{ cat.display_name[1:] }}
+                            </td>
+                            <td class="text-end text-muted small">
+                                {{ cat.usage_count }} {{ _('tickets') }}
+                            </td>
+                            <td class="text-end">
+                                {% if cat.usage_count == 0 %}
+                                <form method="POST"
+                                      action="{{ url_for('admin.delete_category', category_id=cat.id) }}"
+                                      class="d-inline">
+                                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                        <i class="bi bi-trash"></i>
+                                    </button>
+                                </form>
+                                {% endif %}
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+                {% else %}
+                <div class="text-center py-4 text-muted">
+                    <i class="bi bi-tags display-6 d-block mb-2"></i>
+                    {{ _('No categories yet.') }}
+                </div>
+                {% endif %}
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
