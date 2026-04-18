@@ -13,3 +13,5 @@ instance/
 caddy_data/
 caddy_config/
 .claude/
+*.sql
+*.bz2

@@ -1,72 +1,154 @@
 # Developer Guide
 
-This document covers everything you need to get the project running locally and understand how to extend it.
+Everything needed to run the project locally and extend it.
 
 ---
 
-## Quick Start
+## Quick start
 
-### Prerequisites
-
-- Docker and Docker Compose
-- No local Python install required (everything runs in containers)
-
-### 1. Clone and configure
+Requires Docker and Docker Compose — no local Python install needed.
 
 ```sh
 git clone <repo>
 cd rapporter
 cp .env.example .env
-```
-
-The defaults in `.env.example` work for local development. You only need to set `SECRET_KEY`:
-
-```sh
 echo "SECRET_KEY=$(python3 -c 'import secrets; print(secrets.token_hex(32))')" >> .env
-```
-
-### 2. Start the dev stack
-
-```sh
 docker compose up
 ```
 
-This starts **only PostgreSQL and the Flask app** (Caddy is production-only). The `docker-compose.override.yml` is applied automatically and switches the app to Flask dev server with hot-reload.
+The override file (`docker-compose.override.yml`) is applied automatically
+and switches the web container to Flask's dev server with reload. The app
+is available at **http://localhost:8000**.
 
-The app is available at **http://localhost:5000**.
-
-On first start, migrations and seed data run automatically. Default admin login:
+On first start, `flask db upgrade` and `flask seed` run as part of the dev
+command, creating the schema and the default admin:
 
 | Username | Password |
 |---|---|
 | `sysadm` | `ninja01` |
 
-### 3. Stop
-
-```sh
-docker compose down          # keep database volume
-docker compose down -v       # also delete database
-```
+Stop with `docker compose down` (add `-v` to wipe the database volume).
 
 ---
 
-## How Dev vs Production Differs
+## Dev vs production
 
 | | Development | Production |
 |---|---|---|
-| Server | `flask run --reload` | Gunicorn (4 workers) |
-| Hot reload | Yes | No |
-| Caddy | Not started | Started via `--profile prod` |
-| Port | 5000 (direct) | 80 / 443 (via Caddy) |
-| Debug | On | Off |
+| Trigger | `docker compose up` | `docker compose --profile prod up -d` |
+| App server | `flask run --reload` | Gunicorn |
+| Caddy | Not started | Started (HTTP + HTTPS) |
+| Port exposed | 8000 | 80 / 443 via Caddy |
+| Source mount | Bind-mounted | Baked into image |
+| Migrations / seed | Run automatically on container start | Run by deploy workflow |
 
-The override file `docker-compose.override.yml` is picked up automatically by Docker Compose in dev. It mounts the entire project directory into the container so code changes take effect immediately without rebuilding.
+Production is also deployed from master via a GitHub Actions workflow
+(`.github/workflows/deploy.yml`) that runs on a self-hosted runner
+labelled `lluw`.
 
-To start production locally (all three services):
+---
 
-```sh
-docker compose --profile prod up
+## Project layout
+
 ```
+app/
+├── __init__.py          # App factory, extensions, CLI commands
+├── models.py            # SQLAlchemy models: User, Category, Ticket, TicketHistory
+├── i18n.py              # Two-language dict-based translations (sv/en)
+├── wordlist.py          # Swedish words used as public-share tokens
+├── auth/routes.py       # /login, /logout
+├── tickets/routes.py    # /tickets/* — list, create, view, edit, advance,
+│                        #   public share, QR, TV dashboard
+├── admin/routes.py      # /admin/* — dashboard, users, categories
+├── static/              # Static assets (served directly by the web container)
+└── templates/
+    ├── base.html
+    ├── auth/, tickets/, admin/
+
+migrations/versions/     # Alembic migrations (0001 initial, 0002 public_token)
+Dockerfile
+docker-compose.yml           # Base stack (db, web, caddy under prod profile)
+docker-compose.override.yml  # Dev overrides (auto-applied)
+Caddyfile
+.env.example
+.github/workflows/deploy.yml # Self-hosted deploy workflow
+```
+
+### Blueprints
+
+| Blueprint | URL prefix | Access |
+|---|---|---|
+| `auth` | `/` | Everyone |
+| `tickets` | `/tickets` | Logged-in users; `/tickets/p/<id>/<token>` is public |
+| `admin` | `/admin` | Dashboard open to admin + editor; user/category mgmt admin-only |
+
+The root route `/` redirects to `/tickets/`.
+
+---
+
+## Models
+
+### User
+
+```python
+id, username, password_hash, role ("admin"|"editor"|"viewer"), created_at
+```
+
+`user.set_password(plain)` / `user.check_password(plain)` use bcrypt.
+`user.is_admin` and `user.can_edit` (admin or editor) are the common
+role checks.
+
+### Category
+
+Normalised (lowercased, trimmed) unique `name`, plus a `display_name`
+preserving the original casing. `usage_count` is maintained by the ticket
+routes so unused categories can be safely removed.
+
+### Ticket
+
+```python
+id, title, description, feedback, priority (1..3), status,
+category_id, reporter_id, is_public, public_token,
+created_at, db_created_at, updated_at, closed_at
+```
+
+**Statuses** (stored as ASCII slugs, labels resolved via i18n):
+`ny`, `paborjad`, `avslutad`, `pausad`, `avvisad`
+
+**Priorities:** `1` = P1 critical, `2` = P2 important, `3` = P3 low
+
+`created_at` is user-editable (for backdating); `db_created_at` records
+the immutable row-insertion moment.
+
+### TicketHistory
+
+One row per changed field. `field='__created__'` marks the creation
+event. The edit/advance routes call `_log_change` per field to build the
+audit trail.
+
+---
+
+## Localisation
+
+`app/i18n.py` holds a dict keyed by English source strings with Swedish
+overrides. Templates call `{{ _('Some text') }}`; untranslated keys fall
+back to English. Locale detection order:
+
+1. `?lang=sv|en` query argument
+2. `scout_locale` cookie (set by the language dropdown)
+3. Swedish as default (browser `Accept-Language` is intentionally ignored)
+
+No pybabel compile step is needed.
+
+---
+
+## Public share links
+
+Making a ticket public generates a short Swedish word as `public_token`.
+The public URL is `/tickets/p/<id>/<token>`, rate-limited to 30 requests
+per minute. Tokens are cleared when the ticket is made private again, so
+old links stop working. Comparison uses `hmac.compare_digest` on
+UTF-8-encoded bytes (the wordlist contains å/ä/ö).
 
 ---
 
@@ -74,165 +156,90 @@ docker compose --profile prod up
 
 ### Migrations
 
-Migrations live in `migrations/versions/`. The container runs `flask db upgrade` on startup automatically.
-
-To create a new migration after changing models:
+Migrations live in `migrations/versions/`. Create a new one after model
+changes:
 
 ```sh
 docker compose exec web flask db migrate -m "describe the change"
 docker compose exec web flask db upgrade
 ```
 
-### Seed data
+The dev container runs `flask db upgrade` on startup; the deploy
+workflow runs it explicitly before swapping in new containers.
 
-```sh
-docker compose exec web flask seed
-```
-
-Creates the default `sysadm` admin if it doesn't exist. Safe to run repeatedly (idempotent).
-
-### Direct database access
+### Direct DB access
 
 ```sh
 docker compose exec db psql -U rapporter -d rapporter
 ```
 
----
+### Seed
 
-## Project Layout
-
-```
-app/
-├── __init__.py          # App factory: creates Flask app, registers blueprints, defines CLI commands
-├── models.py            # All SQLAlchemy models: Camp, User, Incident
-├── auth/
-│   └── routes.py        # GET/POST /login, GET /logout
-├── incidents/
-│   └── routes.py        # CRUD for incidents — /incidents/
-└── admin/
-    └── routes.py        # Admin panel — /admin/ (users, camps, custom fields, reports)
+```sh
+docker compose exec web flask seed
 ```
 
-### Blueprints
-
-| Blueprint | Prefix | Who can access |
-|---|---|---|
-| `auth` | `/` | Everyone |
-| `incidents` | `/incidents` | Logged-in users |
-| `admin` | `/admin` | Admins only (`@admin_required`) |
-
-The root route `/` redirects based on role: admins → `/admin`, users → `/incidents`, unauthenticated → `/login`.
+Creates `sysadm` if it doesn't exist. Idempotent.
 
 ---
 
-## Models
+## Adding a new feature
 
-### Camp
-
-Represents a scout camp or event.
-
-```python
-id, name, location, start_date, end_date, is_active, custom_fields (JSON), created_at
-```
-
-`custom_fields` is a list of field definitions, for example:
-
-```json
-[
-  {"name": "patrol_name", "label": "Patrullnamn", "type": "text", "required": false},
-  {"name": "severity_code", "label": "Allvarlighetskod", "type": "dropdown", "options": ["A", "B", "C"]}
-]
-```
-
-### User
-
-```python
-id, username, password_hash, role ("admin"|"user"), camp_id (FK, optional), created_at
-```
-
-Use `user.set_password(plain)` and `user.check_password(plain)`. The `is_admin` property checks `role == "admin"`.
-
-### Incident
-
-```python
-id, camp_id (FK), reporter_id (FK), occurred_at, involved_person,
-incident_type, severity, status, description, action_taken,
-followup_notes, needs_followup, extra_data (JSON), created_at, updated_at
-```
-
-`extra_data` stores values for a camp's custom fields, keyed by field name.
-
-**Incident types (Swedish):** `olycka`, `sjukdom`, `konflikt`, `materialbrist`, `säkerhet`, `övrigt`
-
-**Severity:** `låg`, `medium`, `hög`
-
-**Status:** `öppen`, `pågående`, `stängd`
+1. **Route** — add to the relevant blueprint (`tickets`, `admin`, `auth`)
+   or create a new one in `app/`.
+2. **Template** — add to `app/templates/<blueprint>/`.
+3. **Translations** — add Swedish entries to `TRANSLATIONS["sv"]` in
+   `app/i18n.py`. English source strings need no entry.
+4. **Access control** — use `@login_required`, `@editor_required`
+   (tickets) or `@admin_required` (admin).
+5. **History** — if you touch `Ticket` fields, log changes with
+   `_log_change(ticket, field, old, new, current_user)`.
 
 ---
 
-## Adding a New Feature
+## Security notes
 
-### New page / route
-
-1. Decide which blueprint it belongs to (`auth`, `incidents`, `admin`) or create a new one.
-2. Add the route function in `routes.py`.
-3. Add a template in `app/templates/<blueprint>/`.
-4. If the route needs admin-only access, use the `@admin_required` decorator (defined in `admin/routes.py`).
-
-### New model field
-
-1. Add the column to the model in `models.py`.
-2. Generate a migration: `docker compose exec web flask db migrate -m "add field X to Y"`
-3. Apply it: `docker compose exec web flask db upgrade`
-
-### New camp custom field type
-
-Custom field types are handled in the incident form template (`app/templates/incidents/form.html`). Add a new `{% elif field.type == "yourtype" %}` branch to render the input, and handle it in the route when saving `extra_data`.
+- Passwords hashed with bcrypt; never compare plain text.
+- CSRF tokens on every form (Flask-WTF). Hidden `csrf_token` input for
+  plain-POST buttons like delete and advance.
+- Login rate-limited to 10/min per IP; public-share endpoint 30/min.
+- Redirect targets on `set-language` and login are validated to be
+  relative.
+- The container runs as non-root `appuser`.
 
 ---
 
-## Security Notes
-
-- Passwords are hashed with **bcrypt** — never store or compare plain text.
-- All forms use **CSRF tokens** via Flask-WTF. Don't disable `WTF_CSRF_ENABLED`.
-- Login is **rate-limited** to 10 attempts per minute per IP (Flask-Limiter).
-- Redirect targets are validated — only relative paths are accepted to prevent open redirect.
-- Users can only view/edit their own incidents unless they are admins.
-- The app runs as a non-root `appuser` inside the container.
-
----
-
-## Environment Variables
+## Environment variables
 
 | Variable | Required | Default | Description |
 |---|---|---|---|
 | `SECRET_KEY` | Yes | — | Flask session secret |
-| `DATABASE_URL` | Yes | `postgresql://rapporter:rapporter@db:5432/rapporter` | DB connection string |
-| `POSTGRES_DB` | No | `rapporter` | DB name |
-| `POSTGRES_USER` | No | `rapporter` | DB user |
-| `POSTGRES_PASSWORD` | No | `rapporter` | DB password |
+| `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | No | `rapporter` | DB credentials |
+| `DATABASE_URL` | No | derived from POSTGRES_* | Overrides the default URL |
 | `FLASK_ENV` | No | `production` | `development` enables debug mode |
-| `CADDY_DOMAIN` | Prod only | `localhost` | Domain for Caddy TLS |
-| `BASE_URL` | Prod only | `https://localhost` | Base URL used in QR code links |
+| `BASE_URL` | Prod only | `http://localhost` | Base URL baked into QR codes and share links |
+| `CADDY_DOMAIN` | Prod only | `localhost` | Host Caddy serves |
+| `CADDY_AUTO_HTTPS` | Prod only | `on` | Set `off` for offline / LAN deployments |
+| `ALLOW_INSECURE_COOKIES` | No | `0` | Set `1` when serving plain HTTP so the session cookie is sent |
 
 ---
 
-## Common Tasks
+## Common tasks
 
 ```sh
-# Run with logs visible
+# Foreground logs
 docker compose up
 
-# Rebuild after changing requirements.txt or Dockerfile
+# Rebuild after requirements.txt / Dockerfile changes
 docker compose up --build
 
-# Open a shell in the web container
+# Shell into the web container
 docker compose exec web bash
 
-# Run Flask CLI commands
+# Any Flask CLI command
 docker compose exec web flask <command>
 
-# Check logs
-docker compose logs web
-docker compose logs db
+# Logs
+docker compose logs -f web
+docker compose logs -f db
 ```

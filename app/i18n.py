@@ -115,8 +115,6 @@ TRANSLATIONS = {
         "Optional — keep blank if the description may be sensitive":
             "Valfritt — lämna tom om beskrivningen kan vara känslig",
         "More details": "Fler detaljer",
-        "Pin menu": "Fäst menyn",
-        "Unpin menu": "Lossa menyn",
         "Expand menu": "Fäll ut menyn",
         "Collapse": "Fäll ihop",
         "Share password": "Delningslösenord",
