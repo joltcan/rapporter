@@ -25,14 +25,31 @@ concurrency:
 jobs:
   deploy:
     runs-on: [self-hosted, lluw]
+    environment: production
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           clean: false
 
+      - name: Write .env from environment variable
+        env:
+          ENV_FILE: ${{ vars.ENVIRONMENT }}
+        run: printf '%s' "$ENV_FILE" > .env
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
       - name: Build web image
-        run: docker compose --profile prod build web
+        uses: docker/bake-action@v5
+        with:
+          source: .
+          files: docker-compose.yml
+          targets: web
+          load: true
+          set: |
+            web.cache-from=type=gha,scope=prod
+            web.cache-to=type=gha,mode=max,scope=prod
 
       - name: Run database migrations
         run: docker compose --profile prod run --rm web flask db upgrade
