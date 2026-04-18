@@ -37,19 +37,12 @@ jobs:
           ENV_FILE: ${{ vars.ENVIRONMENT }}
         run: printf '%s' "$ENV_FILE" > .env
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
       - name: Build web image
-        uses: docker/bake-action@v5
-        with:
-          source: .
-          files: docker-compose.yml
-          targets: web
-          load: true
-          set: |
-            web.cache-from=type=gha,scope=prod
-            web.cache-to=type=gha,mode=max,scope=prod
+        # Self-hosted runner -- the local Docker daemon already caches
+        # layers across runs, so there's no point shipping them to GHA
+        # cache via buildx. docker/bake-action + type=gha previously
+        # replayed a stale COPY . . layer, shipping an outdated image.
+        run: docker compose -f docker-compose.yml --profile prod build --pull web
 
       - name: Run database migrations
         run: docker compose -f docker-compose.yml --profile prod run --rm web flask db upgrade
