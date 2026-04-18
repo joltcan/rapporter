@@ -227,36 +227,26 @@ def detect_locale():
 
     Precedence:
       1. explicit `?lang=` query argument
-      2. the locale cookie
-      3. Accept-Language best match among SUPPORTED_LOCALES
-      4. DEFAULT_LOCALE
+      2. the locale cookie (set by the dropdown)
+      3. DEFAULT_LOCALE (Swedish)
 
-    The chosen value is cached on `flask.g` so that repeated calls in the
-    same request don't re-parse the header.
+    Browser Accept-Language is intentionally ignored so that the site
+    defaults to Swedish regardless of the visitor's browser settings.
     """
     cached = getattr(g, "locale", None)
     if cached:
         return cached
 
-    # 1. Query arg
     q = request.args.get("lang")
     if q in SUPPORTED_LOCALES:
         g.locale = q
         return q
 
-    # 2. Cookie
     c = request.cookies.get(LOCALE_COOKIE)
     if c in SUPPORTED_LOCALES:
         g.locale = c
         return c
 
-    # 3. Accept-Language
-    best = request.accept_languages.best_match(SUPPORTED_LOCALES)
-    if best:
-        g.locale = best
-        return best
-
-    # 4. Fallback
     g.locale = DEFAULT_LOCALE
     return DEFAULT_LOCALE
 

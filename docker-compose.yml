@@ -27,13 +27,15 @@ services:
       retries: 10
     networks:
       - internal
+    ports:
+      - "5432:5432"
 
   web:
     build: .
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY}
-      DATABASE_URL: ${DATABASE_URL:-postgresql://rapporter:rapporter@db:5432/rapporter}
+      DATABASE_URL: postgresql://rapporter:${POSTGRES_PASSWORD:-rapporter}@db:5432/${POSTGRES_DB:-rapporter}
       FLASK_APP: wsgi.py
       FLASK_ENV: ${FLASK_ENV:-production}
       BASE_URL: ${BASE_URL:-http://localhost}
