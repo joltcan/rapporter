@@ -26,7 +26,6 @@ TRANSLATIONS = {
     "en": {},  # English source is the key, so no overrides needed.
     "sv": {
         # --- General ---
-        "Scout Tickets": "Scout Ärenden",
         "Ticket system": "Ärendesystem",
         "Sign in": "Logga in",
         "Sign out": "Logga ut",

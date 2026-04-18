@@ -71,6 +71,7 @@ class UserForm(FlaskForm):
     role = SelectField(
         "Role",
         choices=[(ROLE_ADMIN, "Administrator"), (ROLE_EDITOR, "Editor"), (ROLE_VIEWER, "Viewer")],
+        default=ROLE_EDITOR,
         validators=[DataRequired()],
     )
     submit = SubmitField("Save")

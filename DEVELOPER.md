@@ -25,7 +25,7 @@ command, creating the schema and the default admin:
 
 | Username | Password |
 |---|---|
-| `sysadm` | `ninja01` |
+| `sysadm` | `bananipyjamas` |
 
 Stop with `docker compose down` (add `-v` to wipe the database volume).
 

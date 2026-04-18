@@ -1,9 +1,8 @@
 # Rapporter
 
-Ett enkelt ärendesystem för scoutläger. Problem, önskemål och uppgifter
-rapporteras som ärenden med prioritet, kategori och status. Finns även en
-TV-vy för att visa öppna ärenden på storskärm samt publika delningslänkar
-med lösenord så anmälaren kan följa statusen.
+Ett enkelt ärendesystem för läger och annat. Problem, önskemål och uppgifter rapporteras som ärenden med prioritet, kategori och status.
+
+Finns även en TV-vy för att visa öppna ärenden på storskärm samt publika delningslänkar med lösenord så anmälaren kan följa statusen.
 
 Gränssnittet är på svenska (med engelska som alternativ).
 
@@ -27,7 +26,7 @@ då körs appen i debug-läge på http://localhost:8000 och Caddy hoppas över.
 
 | Användarnamn | Lösenord |
 |---|---|
-| `sysadm` | `ninja01` |
+| `sysadm` | `bananipyjamas` |
 
 **Byt lösenord direkt efter första inloggningen.**
 

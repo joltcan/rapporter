@@ -121,10 +121,10 @@ def register_commands(app):
 
         admin = User.query.filter_by(username="sysadm").first()
         if not admin:
-            pwd_hash = bcrypt.hashpw("ninja01".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+            pwd_hash = bcrypt.hashpw("bananipyjamas".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
             admin = User(username="sysadm", password_hash=pwd_hash, role=ROLE_ADMIN)
             db.session.add(admin)
             db.session.commit()
-            click.echo("Admin user 'sysadm' created (password: ninja01).")
+            click.echo("Admin user 'sysadm' created (password: bananipyjamas).")
         else:
             click.echo("Admin user 'sysadm' already exists.")
