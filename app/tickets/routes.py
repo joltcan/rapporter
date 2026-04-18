@@ -30,10 +30,18 @@ from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from app.tickets import tickets_bp
 from app.models import (
     Ticket, Category, TicketHistory, User,
-    STATUSES, STATUS_NEW, STATUS_CLOSED, STATUS_REJECTED, TERMINAL_STATUSES,
+    STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_CLOSED, STATUS_REJECTED,
+    TERMINAL_STATUSES,
     PRIORITIES, PRIORITY_P3,
     _new_public_token,
 )
+
+# One-click forward transitions available on the ticket view. Paused and
+# rejected are off the happy path and remain manual-via-edit.
+NEXT_STATUS = {
+    STATUS_NEW: STATUS_STARTED,
+    STATUS_STARTED: STATUS_CLOSED,
+}
 from app import db, limiter
 from app.i18n import gettext as _, status_label, priority_label
 
@@ -269,12 +277,25 @@ def view_ticket(ticket_id):
         db.session.commit()
     share_url = _public_url(ticket) if ticket.is_public else _internal_url(ticket)
     qr_b64 = _qr_png_b64(share_url)
+    next_status = NEXT_STATUS.get(ticket.status)
+    # Button label is English; view.html pipes it through _() for localisation.
+    # Resolve uses a distinct colour from Start so the two actions aren't
+    # both green -- which reads as "done" twice over.
+    next_status_meta = {
+        STATUS_STARTED: ("Start", "bi-play-fill", "btn-success"),
+        STATUS_CLOSED: ("Resolve", "bi-check2-circle", "btn-dark"),
+    }
+    next_label, next_icon, next_btn = next_status_meta.get(next_status, (None, None, None))
     return render_template(
         "tickets/view.html",
         ticket=ticket,
         qr_b64=qr_b64,
         share_url=share_url,
         history=ticket.history,
+        next_status=next_status,
+        next_status_label=next_label,
+        next_status_icon=next_icon,
+        next_status_btn=next_btn,
     )
 
 
@@ -306,6 +327,14 @@ def edit_ticket(ticket_id):
             and new_closed_at is None
         ):
             new_closed_at = datetime.now(timezone.utc)
+        # Reopening: clear closed_at when moving from a terminal status
+        # back to an open one. A non-terminal ticket with a closed
+        # timestamp is inconsistent.
+        if (
+            ticket.status in TERMINAL_STATUSES
+            and new_status not in TERMINAL_STATUSES
+        ):
+            new_closed_at = None
 
         new_title = (form.title.data or "").strip() or None
         new_description = form.description.data.strip()
@@ -367,6 +396,33 @@ def edit_ticket(ticket_id):
 
 
 # ---------------------------------------------------------------------------
+# Advance -- one-click forward transition: ny → påbörjad → avslutad.
+# ---------------------------------------------------------------------------
+
+@tickets_bp.route("/<int:ticket_id>/advance", methods=["POST"])
+@login_required
+@editor_required
+def advance_ticket(ticket_id):
+    ticket = Ticket.query.get_or_404(ticket_id)
+    next_status = NEXT_STATUS.get(ticket.status)
+    if next_status is None:
+        flash(_("You are not allowed to do that."), "danger")
+        return redirect(url_for("tickets.view_ticket", ticket_id=ticket.id))
+
+    old_status = ticket.status
+    old_closed_at = ticket.closed_at
+    ticket.status = next_status
+    if next_status in TERMINAL_STATUSES and ticket.closed_at is None:
+        ticket.closed_at = datetime.now(timezone.utc)
+
+    _log_change(ticket, "status", old_status, ticket.status, current_user)
+    _log_change(ticket, "closed_at", old_closed_at, ticket.closed_at, current_user)
+    db.session.commit()
+    flash(_("Ticket saved."), "success")
+    return redirect(url_for("tickets.view_ticket", ticket_id=ticket.id))
+
+
+# ---------------------------------------------------------------------------
 # Delete (admin only -- viewers and editors cannot destroy data)
 # ---------------------------------------------------------------------------
 
@@ -398,7 +454,11 @@ def public_ticket(ticket_id, token):
     # constant-time compare so timing doesn't leak the token.
     if not ticket.is_public or not ticket.public_token:
         abort(404)
-    if not hmac.compare_digest(ticket.public_token, token):
+    # Compare as bytes -- hmac.compare_digest rejects str with non-ASCII
+    # characters (the Swedish wordlist contains å/ä/ö).
+    if not hmac.compare_digest(
+        ticket.public_token.encode("utf-8"), token.encode("utf-8")
+    ):
         abort(404)
     return render_template("tickets/public.html", ticket=ticket)
 

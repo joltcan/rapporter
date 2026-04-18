@@ -32,17 +32,106 @@
             border-color: var(--scout-green-dark);
             color: #fff;
         }
-        .sidebar-offcanvas { width: 240px; }
-        .sidebar-offcanvas .nav-link { color: #495057; border-radius: 0.375rem; margin-bottom: 2px; }
-        .sidebar-offcanvas .nav-link:hover, .sidebar-offcanvas .nav-link.active {
-            background-color: #e9ecef; color: #212529;
+        /* --- App shell: navbar + (sidebar | main) ---
+           The sidebar is an in-flow left rail on desktop (64px collapsed,
+           240px expanded) so the main content always sits next to it, not
+           under it. On mobile the rail turns into a slide-in drawer. */
+        .app-shell { display: flex; min-height: calc(100vh - 56px); }
+        .app-main { flex: 1 1 auto; min-width: 0; }
+
+        .app-sidebar {
+            flex: 0 0 auto;
+            width: 64px;
+            background-color: #fff;
+            border-right: 1px solid #e5e7eb;
+            transition: width 0.25s ease;
+            overflow-x: hidden;
+            overflow-y: auto;
+            display: flex;
+            flex-direction: column;
         }
-        .sidebar-offcanvas .nav-link i { width: 20px; }
-        .main-content { min-height: calc(100vh - 56px); }
-        /* When the menu is pinned we push the main content to the right so
-           the drawer no longer overlaps it. */
-        @media (min-width: 992px) {
-            body.sidebar-pinned .main-content { margin-left: 240px; }
+        body.sidebar-expanded .app-sidebar { width: 240px; }
+
+        .app-sidebar .nav { flex-grow: 1; padding: 0.5rem 0; }
+        .app-sidebar .nav-link {
+            display: flex;
+            align-items: center;
+            padding: 0.625rem 1.1rem;
+            color: #495057;
+            border-radius: 0;
+            white-space: nowrap;
+        }
+        .app-sidebar .nav-link i {
+            width: 1.5rem;
+            flex: 0 0 auto;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .app-sidebar .nav-link .label {
+            margin-left: 0.6rem;
+            opacity: 0;
+            transition: opacity 0.15s ease 0.05s;
+        }
+        body.sidebar-expanded .app-sidebar .nav-link .label { opacity: 1; }
+        .app-sidebar .nav-link:hover,
+        .app-sidebar .nav-link.active {
+            background-color: #e9ecef;
+            color: #212529;
+        }
+        .app-sidebar hr { margin: 0.5rem 0; border-color: #e5e7eb; }
+
+        .app-sidebar-toggle {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            background: none;
+            border: 0;
+            border-top: 1px solid #e5e7eb;
+            padding: 0.625rem 1.1rem;
+            color: #6c757d;
+        }
+        .app-sidebar-toggle:hover { background-color: #e9ecef; color: #212529; }
+        .app-sidebar-toggle i {
+            width: 1.5rem;
+            flex: 0 0 auto;
+            font-size: 1.1rem;
+            text-align: center;
+        }
+        .app-sidebar-toggle .label {
+            margin-left: 0.6rem;
+            opacity: 0;
+            transition: opacity 0.15s ease 0.05s;
+        }
+        body.sidebar-expanded .app-sidebar-toggle .label { opacity: 1; }
+
+        .sidebar-mobile-backdrop { display: none; }
+
+        @media (max-width: 991.98px) {
+            /* Mobile: sidebar floats over content as a drawer. */
+            .app-shell { display: block; }
+            .app-sidebar {
+                position: fixed;
+                top: 56px;
+                left: 0;
+                bottom: 0;
+                width: 240px;
+                transform: translateX(-100%);
+                transition: transform 0.25s ease;
+                box-shadow: 2px 0 8px rgba(0,0,0,0.15);
+                z-index: 1030;
+            }
+            body.sidebar-mobile-open .app-sidebar { transform: translateX(0); }
+            /* On mobile the drawer is always "expanded" (labels shown). */
+            .app-sidebar .nav-link .label,
+            .app-sidebar-toggle .label { opacity: 1; }
+            .app-sidebar-toggle { display: none; }
+            .sidebar-mobile-backdrop {
+                position: fixed;
+                inset: 56px 0 0 0;
+                background: rgba(0,0,0,0.3);
+                z-index: 1025;
+            }
+            body.sidebar-mobile-open .sidebar-mobile-backdrop { display: block; }
         }
 
         /* Priority badges */
@@ -70,7 +159,9 @@
             border-top-right-radius: 0.75rem !important;
         }
         @media print {
-            .navbar, .sidebar-offcanvas, .btn, form.no-print { display: none !important; }
+            .navbar, .app-sidebar, .sidebar-mobile-backdrop, .btn, form.no-print {
+                display: none !important;
+            }
         }
         @media (max-width: 768px) {
             .table-responsive { font-size: 0.875rem; }
@@ -82,9 +173,8 @@
     <nav class="navbar navbar-expand-lg navbar-dark bg-scout">
         <div class="container-fluid">
             {% if current_user.is_authenticated %}
-            <button class="btn btn-link text-white p-0 me-3 border-0" type="button"
-                    data-bs-toggle="offcanvas" data-bs-target="#sideMenu"
-                    aria-controls="sideMenu" aria-label="{{ _('Overview') }}">
+            <button id="mobileMenuToggle" class="btn btn-link text-white p-0 me-3 border-0 d-lg-none"
+                    type="button" aria-label="{{ _('Overview') }}">
                 <i class="bi bi-list fs-3"></i>
             </button>
             {% endif %}
@@ -168,86 +258,70 @@
     {% endif %}
     {% endwith %}
 
-    {% if current_user.is_authenticated %}
-    <!-- Overview drawer (hamburger / pinnable sidebar) -->
-    <div class="offcanvas offcanvas-start sidebar-offcanvas" tabindex="-1" id="sideMenu"
-         data-bs-backdrop="false" data-bs-scroll="true"
-         aria-labelledby="sideMenuLabel">
-        <div class="offcanvas-header bg-scout text-white py-2">
-            <h5 class="offcanvas-title" id="sideMenuLabel">
-                <i class="bi bi-compass me-2"></i>{{ _('Overview') }}
-            </h5>
-            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
-        </div>
-        <div class="offcanvas-body d-flex flex-column p-0">
-            <ul class="nav flex-column p-3 flex-grow-1">
+    {% block body %}
+    <div class="app-shell">
+        {% if current_user.is_authenticated %}
+        <aside class="app-sidebar" id="sideMenu" aria-label="{{ _('Overview') }}">
+            <ul class="nav flex-column">
                 {% if current_user.is_admin %}
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
-                       href="{{ url_for('admin.dashboard') }}">
-                        <i class="bi bi-speedometer2 me-2"></i>{{ _('Overview') }}
+                       href="{{ url_for('admin.dashboard') }}" title="{{ _('Overview') }}">
+                        <i class="bi bi-speedometer2"></i><span class="label">{{ _('Overview') }}</span>
                     </a>
                 </li>
                 {% endif %}
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'tickets.list_tickets' %}active{% endif %}"
-                       href="{{ url_for('tickets.list_tickets') }}">
-                        <i class="bi bi-list-ul me-2"></i>{{ _('Tickets') }}
+                       href="{{ url_for('tickets.list_tickets') }}" title="{{ _('Tickets') }}">
+                        <i class="bi bi-list-ul"></i><span class="label">{{ _('Tickets') }}</span>
                     </a>
                 </li>
                 {% if current_user.can_edit %}
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'tickets.new_ticket' %}active{% endif %}"
-                       href="{{ url_for('tickets.new_ticket') }}">
-                        <i class="bi bi-plus-circle me-2"></i>{{ _('New ticket') }}
+                       href="{{ url_for('tickets.new_ticket') }}" title="{{ _('New ticket') }}">
+                        <i class="bi bi-plus-circle"></i><span class="label">{{ _('New ticket') }}</span>
                     </a>
                 </li>
                 {% endif %}
                 <li class="nav-item">
-                    <a class="nav-link" href="{{ url_for('tickets.tv_dashboard') }}" target="_blank">
-                        <i class="bi bi-tv me-2"></i>{{ _('TV dashboard') }}
+                    <a class="nav-link" href="{{ url_for('tickets.tv_dashboard') }}"
+                       target="_blank" title="{{ _('TV dashboard') }}">
+                        <i class="bi bi-tv"></i><span class="label">{{ _('TV dashboard') }}</span>
                     </a>
                 </li>
                 {% if current_user.is_admin %}
-                <li class="nav-item mt-3"><hr class="my-1"></li>
+                <li class="nav-item"><hr></li>
                 <li class="nav-item">
                     <a class="nav-link {% if 'admin.users' in request.endpoint or 'admin.new_user' in request.endpoint or 'admin.edit_user' in request.endpoint or 'admin.user_qr' in request.endpoint %}active{% endif %}"
-                       href="{{ url_for('admin.users') }}">
-                        <i class="bi bi-people me-2"></i>{{ _('Users') }}
+                       href="{{ url_for('admin.users') }}" title="{{ _('Users') }}">
+                        <i class="bi bi-people"></i><span class="label">{{ _('Users') }}</span>
                     </a>
                 </li>
                 <li class="nav-item">
                     <a class="nav-link {% if request.endpoint == 'admin.categories' %}active{% endif %}"
-                       href="{{ url_for('admin.categories') }}">
-                        <i class="bi bi-tags me-2"></i>{{ _('Categories') }}
+                       href="{{ url_for('admin.categories') }}" title="{{ _('Categories') }}">
+                        <i class="bi bi-tags"></i><span class="label">{{ _('Categories') }}</span>
                     </a>
                 </li>
                 {% endif %}
             </ul>
-            <div class="p-3 border-top">
-                <button type="button" id="pinToggle" class="btn btn-sm btn-outline-secondary w-100">
-                    <i class="bi bi-pin-angle me-1" id="pinIcon"></i><span id="pinLabel">{{ _('Pin menu') }}</span>
-                </button>
-            </div>
-        </div>
-    </div>
-    {% endif %}
-
-    {% block body %}
-    <div class="container-fluid">
-        <div class="row">
+            <button type="button" id="sidebarToggle" class="app-sidebar-toggle"
+                    aria-label="{{ _('Expand menu') }}">
+                <i class="bi bi-chevron-double-right" id="sidebarToggleIcon"></i>
+                <span class="label">{{ _('Collapse') }}</span>
+            </button>
+        </aside>
+        <div class="sidebar-mobile-backdrop" id="sidebarBackdrop"></div>
+        {% endif %}
+        <main class="app-main p-4">
             {% if current_user.is_authenticated %}
-            <div class="col-12 main-content p-4">
-                {% block content %}{% endblock %}
-            </div>
+            {% block content %}{% endblock %}
             {% else %}
-            <div class="col-12 main-content p-4">
-                {% block content_full %}
-                {% block content_anon %}{% endblock %}
-                {% endblock %}
-            </div>
+            {% block content_full %}{% block content_anon %}{% endblock %}{% endblock %}
             {% endif %}
-        </div>
+        </main>
     </div>
     {% endblock body %}
 
@@ -257,50 +331,41 @@
     {% if current_user.is_authenticated %}
     <script>
     (function () {
-        const KEY = 'sidebarPinned';
-        const side = document.getElementById('sideMenu');
-        const btn = document.getElementById('pinToggle');
-        const icon = document.getElementById('pinIcon');
-        const label = document.getElementById('pinLabel');
-        const pinText = {{ _('Pin menu')|tojson }};
-        const unpinText = {{ _('Unpin menu')|tojson }};
+        const KEY = 'sidebarExpanded';
+        const body = document.body;
+        const toggleBtn = document.getElementById('sidebarToggle');
+        const toggleIcon = document.getElementById('sidebarToggleIcon');
+        const mobileBtn = document.getElementById('mobileMenuToggle');
+        const backdrop = document.getElementById('sidebarBackdrop');
 
-        function isPinned() { return localStorage.getItem(KEY) === '1'; }
-        function syncUI() {
-            if (isPinned()) {
-                document.body.classList.add('sidebar-pinned');
-                icon.className = 'bi bi-pin-fill me-1';
-                label.textContent = unpinText;
+        function isExpanded() { return localStorage.getItem(KEY) === '1'; }
+        function syncExpanded() {
+            if (isExpanded()) {
+                body.classList.add('sidebar-expanded');
+                toggleIcon.className = 'bi bi-chevron-double-left';
             } else {
-                document.body.classList.remove('sidebar-pinned');
-                icon.className = 'bi bi-pin-angle me-1';
-                label.textContent = pinText;
+                body.classList.remove('sidebar-expanded');
+                toggleIcon.className = 'bi bi-chevron-double-right';
             }
         }
 
-        btn.addEventListener('click', () => {
-            if (isPinned()) {
-                localStorage.removeItem(KEY);
-                bootstrap.Offcanvas.getInstance(side)?.hide();
-            } else {
-                localStorage.setItem(KEY, '1');
-            }
-            syncUI();
+        toggleBtn.addEventListener('click', () => {
+            if (isExpanded()) localStorage.removeItem(KEY);
+            else localStorage.setItem(KEY, '1');
+            syncExpanded();
         });
 
-        // When the drawer is hidden manually while pinned, unpin it so the
-        // two states never disagree.
-        side.addEventListener('hidden.bs.offcanvas', () => {
-            if (isPinned()) {
-                localStorage.removeItem(KEY);
-                syncUI();
-            }
+        // Mobile drawer: hamburger toggles, backdrop or nav link closes.
+        function closeMobile() { body.classList.remove('sidebar-mobile-open'); }
+        mobileBtn?.addEventListener('click', () => {
+            body.classList.toggle('sidebar-mobile-open');
+        });
+        backdrop?.addEventListener('click', closeMobile);
+        document.querySelectorAll('#sideMenu .nav-link').forEach(el => {
+            el.addEventListener('click', closeMobile);
         });
 
-        syncUI();
-        if (isPinned()) {
-            bootstrap.Offcanvas.getOrCreateInstance(side).show();
-        }
+        syncExpanded();
     })();
     </script>
     {% endif %}

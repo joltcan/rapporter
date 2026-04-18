@@ -16,6 +16,16 @@
     <span class="badge bg-info fs-6"><i class="bi bi-globe me-1"></i>{{ _('Public') }}</span>
     {% endif %}
     <div class="ms-auto d-flex gap-2">
+        {% if current_user.can_edit and next_status %}
+        <form method="POST"
+              action="{{ url_for('tickets.advance_ticket', ticket_id=ticket.id) }}"
+              class="d-inline">
+            <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
+            <button type="submit" class="btn {{ next_status_btn }} btn-sm">
+                <i class="bi {{ next_status_icon }} me-1"></i>{{ _(next_status_label) }}
+            </button>
+        </form>
+        {% endif %}
         {% if current_user.can_edit %}
         <a href="{{ url_for('tickets.edit_ticket', ticket_id=ticket.id) }}" class="btn btn-primary btn-sm">
             <i class="bi bi-pencil me-1"></i>{{ _('Edit') }}

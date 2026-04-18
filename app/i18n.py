@@ -93,6 +93,10 @@ TRANSLATIONS = {
         "Paused": "Pausad",
         "Rejected": "Avvisad",
 
+        # --- Status transition verbs (quick-action buttons) ---
+        "Start": "Påbörja",
+        "Resolve": "Avsluta",
+
         # --- Dashboard / widgets ---
         "Open tickets": "Öppna ärenden",
         "Total tickets": "Totalt ärenden",
@@ -113,6 +117,8 @@ TRANSLATIONS = {
         "More details": "Fler detaljer",
         "Pin menu": "Fäst menyn",
         "Unpin menu": "Lossa menyn",
+        "Expand menu": "Fäll ut menyn",
+        "Collapse": "Fäll ihop",
         "Share password": "Delningslösenord",
         "Describe what happened": "Beskriv vad som hänt",
         "Short feedback line": "telefon/namn/annat",
