@@ -14,7 +14,7 @@ Kräver Docker och Docker Compose.
 ```sh
 cp .env.example .env
 # sätt minst SECRET_KEY i .env
-docker compose --profile prod up -d
+docker compose -f docker-compose.yml --profile prod up -d
 ```
 
 Detta startar PostgreSQL, Flask-appen (Gunicorn) och Caddy med automatisk

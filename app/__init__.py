@@ -16,7 +16,14 @@ db = SQLAlchemy()
 migrate = Migrate()
 login_manager = LoginManager()
 csrf = CSRFProtect()
-limiter = Limiter(key_func=get_remote_address, default_limits=[])
+limiter = Limiter(
+    key_func=get_remote_address,
+    default_limits=[],
+    # Falls back to in-memory when REDIS_URL is unset (e.g. tests, one-off
+    # flask shell). In compose we always point this at the redis service
+    # so counters survive web restarts.
+    storage_uri=os.environ.get("REDIS_URL", "memory://"),
+)
 
 
 def _bool_env(name, default=False):

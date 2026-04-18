@@ -52,10 +52,10 @@ jobs:
             web.cache-to=type=gha,mode=max,scope=prod
 
       - name: Run database migrations
-        run: docker compose --profile prod run --rm web flask db upgrade
+        run: docker compose -f docker-compose.yml --profile prod run --rm web flask db upgrade
 
       - name: Start / update stack
-        run: docker compose --profile prod up -d --remove-orphans
+        run: docker compose -f docker-compose.yml --profile prod up -d --remove-orphans
 
       - name: Prune dangling images
         run: docker image prune -f

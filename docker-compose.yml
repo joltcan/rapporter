@@ -1,5 +1,6 @@
 # The stack:
 #   db    -- PostgreSQL (official Alpine image, runs as non-root by default)
+#   redis -- Rate-limit counter store so limits survive web restarts
 #   web   -- Flask + Gunicorn (custom image, runs as the `appuser` user)
 #   caddy -- Reverse proxy with optional HTTPS (official Alpine image)
 #
@@ -30,12 +31,29 @@ services:
     ports:
       - "5432:5432"
 
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    # AOF persistence so rate-limit counters survive restarts; RDB
+    # snapshots disabled since the data is transient.
+    command: ["redis-server", "--appendonly", "yes", "--save", ""]
+    volumes:
+      - redis_data:/data
+    networks:
+      - internal
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
   web:
     build: .
     restart: unless-stopped
     environment:
       SECRET_KEY: ${SECRET_KEY}
       DATABASE_URL: postgresql://rapporter:${POSTGRES_PASSWORD:-rapporter}@db:5432/${POSTGRES_DB:-rapporter}
+      REDIS_URL: redis://redis:6379/0
       FLASK_APP: wsgi.py
       FLASK_ENV: ${FLASK_ENV:-production}
       BASE_URL: ${BASE_URL:-http://localhost}
@@ -46,6 +64,8 @@ services:
       SESSION_COOKIE_SECURE: ${SESSION_COOKIE_SECURE:-}
     depends_on:
       db:
+        condition: service_healthy
+      redis:
         condition: service_healthy
     networks:
       - internal
@@ -74,6 +94,7 @@ services:
 
 volumes:
   postgres_data:
+  redis_data:
   caddy_data:
   caddy_config:
 

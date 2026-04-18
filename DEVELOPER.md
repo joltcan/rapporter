@@ -35,12 +35,17 @@ Stop with `docker compose down` (add `-v` to wipe the database volume).
 
 | | Development | Production |
 |---|---|---|
-| Trigger | `docker compose up` | `docker compose --profile prod up -d` |
+| Trigger | `docker compose up` | `docker compose -f docker-compose.yml --profile prod up -d` |
 | App server | `flask run --reload` | Gunicorn |
 | Caddy | Not started | Started (HTTP + HTTPS) |
 | Port exposed | 8000 | 80 / 443 via Caddy |
 | Source mount | Bind-mounted | Baked into image |
 | Migrations / seed | Run automatically on container start | Run by deploy workflow |
+
+The explicit `-f docker-compose.yml` in the prod command is important:
+without it, Docker Compose auto-loads `docker-compose.override.yml`
+and its `flask run --reload` command wins over the Dockerfile's
+Gunicorn `CMD`. Passing `-f` disables the automatic override merge.
 
 Production is also deployed from master via a GitHub Actions workflow
 (`.github/workflows/deploy.yml`) that runs on a self-hosted runner
@@ -216,6 +221,7 @@ Creates `sysadm` if it doesn't exist. Idempotent.
 | `SECRET_KEY` | Yes | — | Flask session secret |
 | `POSTGRES_DB` / `POSTGRES_USER` / `POSTGRES_PASSWORD` | No | `rapporter` | DB credentials |
 | `DATABASE_URL` | No | derived from POSTGRES_* | Overrides the default URL |
+| `REDIS_URL` | No | `memory://` | Rate-limit counter store; falls back to in-memory if unset |
 | `FLASK_ENV` | No | `production` | `development` enables debug mode |
 | `BASE_URL` | Prod only | `http://localhost` | Base URL baked into QR codes and share links |
 | `CADDY_DOMAIN` | Prod only | `localhost` | Host Caddy serves |
