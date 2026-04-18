@@ -32,17 +32,18 @@
             border-color: var(--scout-green-dark);
             color: #fff;
         }
-        .sidebar {
-            min-height: calc(100vh - 56px);
-            background: #fff;
-            border-right: 1px solid #dee2e6;
-        }
-        .sidebar .nav-link { color: #495057; border-radius: 0.375rem; margin-bottom: 2px; }
-        .sidebar .nav-link:hover, .sidebar .nav-link.active {
+        .sidebar-offcanvas { width: 240px; }
+        .sidebar-offcanvas .nav-link { color: #495057; border-radius: 0.375rem; margin-bottom: 2px; }
+        .sidebar-offcanvas .nav-link:hover, .sidebar-offcanvas .nav-link.active {
             background-color: #e9ecef; color: #212529;
         }
-        .sidebar .nav-link i { width: 20px; }
+        .sidebar-offcanvas .nav-link i { width: 20px; }
         .main-content { min-height: calc(100vh - 56px); }
+        /* When the menu is pinned we push the main content to the right so
+           the drawer no longer overlaps it. */
+        @media (min-width: 992px) {
+            body.sidebar-pinned .main-content { margin-left: 240px; }
+        }
 
         /* Priority badges */
         .badge-p1 { background-color: #c62828; color: #fff; }
@@ -69,11 +70,10 @@
             border-top-right-radius: 0.75rem !important;
         }
         @media print {
-            .navbar, .sidebar, .btn, form.no-print { display: none !important; }
+            .navbar, .sidebar-offcanvas, .btn, form.no-print { display: none !important; }
         }
         @media (max-width: 768px) {
             .table-responsive { font-size: 0.875rem; }
-            .sidebar { min-height: auto; border-right: none; border-bottom: 1px solid #dee2e6; }
         }
     </style>
     {% block extra_head %}{% endblock %}
@@ -81,6 +81,13 @@
 <body>
     <nav class="navbar navbar-expand-lg navbar-dark bg-scout">
         <div class="container-fluid">
+            {% if current_user.is_authenticated %}
+            <button class="btn btn-link text-white p-0 me-3 border-0" type="button"
+                    data-bs-toggle="offcanvas" data-bs-target="#sideMenu"
+                    aria-controls="sideMenu" aria-label="{{ _('Overview') }}">
+                <i class="bi bi-list fs-3"></i>
+            </button>
+            {% endif %}
             <a class="navbar-brand" href="{{ url_for('index') }}">
                 <i class="bi bi-shield-check me-2"></i>{{ _('Scout Tickets') }}
             </a>
@@ -161,60 +168,76 @@
     {% endif %}
     {% endwith %}
 
+    {% if current_user.is_authenticated %}
+    <!-- Overview drawer (hamburger / pinnable sidebar) -->
+    <div class="offcanvas offcanvas-start sidebar-offcanvas" tabindex="-1" id="sideMenu"
+         data-bs-backdrop="false" data-bs-scroll="true"
+         aria-labelledby="sideMenuLabel">
+        <div class="offcanvas-header bg-scout text-white py-2">
+            <h5 class="offcanvas-title" id="sideMenuLabel">
+                <i class="bi bi-compass me-2"></i>{{ _('Overview') }}
+            </h5>
+            <button type="button" class="btn-close btn-close-white" data-bs-dismiss="offcanvas" aria-label="Close"></button>
+        </div>
+        <div class="offcanvas-body d-flex flex-column p-0">
+            <ul class="nav flex-column p-3 flex-grow-1">
+                {% if current_user.is_admin %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
+                       href="{{ url_for('admin.dashboard') }}">
+                        <i class="bi bi-speedometer2 me-2"></i>{{ _('Overview') }}
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'tickets.list_tickets' %}active{% endif %}"
+                       href="{{ url_for('tickets.list_tickets') }}">
+                        <i class="bi bi-list-ul me-2"></i>{{ _('Tickets') }}
+                    </a>
+                </li>
+                {% if current_user.can_edit %}
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'tickets.new_ticket' %}active{% endif %}"
+                       href="{{ url_for('tickets.new_ticket') }}">
+                        <i class="bi bi-plus-circle me-2"></i>{{ _('New ticket') }}
+                    </a>
+                </li>
+                {% endif %}
+                <li class="nav-item">
+                    <a class="nav-link" href="{{ url_for('tickets.tv_dashboard') }}" target="_blank">
+                        <i class="bi bi-tv me-2"></i>{{ _('TV dashboard') }}
+                    </a>
+                </li>
+                {% if current_user.is_admin %}
+                <li class="nav-item mt-3"><hr class="my-1"></li>
+                <li class="nav-item">
+                    <a class="nav-link {% if 'admin.users' in request.endpoint or 'admin.new_user' in request.endpoint or 'admin.edit_user' in request.endpoint or 'admin.user_qr' in request.endpoint %}active{% endif %}"
+                       href="{{ url_for('admin.users') }}">
+                        <i class="bi bi-people me-2"></i>{{ _('Users') }}
+                    </a>
+                </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'admin.categories' %}active{% endif %}"
+                       href="{{ url_for('admin.categories') }}">
+                        <i class="bi bi-tags me-2"></i>{{ _('Categories') }}
+                    </a>
+                </li>
+                {% endif %}
+            </ul>
+            <div class="p-3 border-top">
+                <button type="button" id="pinToggle" class="btn btn-sm btn-outline-secondary w-100">
+                    <i class="bi bi-pin-angle me-1" id="pinIcon"></i><span id="pinLabel">{{ _('Pin menu') }}</span>
+                </button>
+            </div>
+        </div>
+    </div>
+    {% endif %}
+
     {% block body %}
     <div class="container-fluid">
         <div class="row">
             {% if current_user.is_authenticated %}
-            <div class="col-lg-2 col-md-3 px-0 sidebar d-none d-md-block">
-                <div class="p-3">
-                    <p class="text-muted small text-uppercase fw-semibold mb-2">{{ _('Navigation') if false else _('Overview') }}</p>
-                    <ul class="nav flex-column">
-                        {% if current_user.is_admin %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'admin.dashboard' %}active{% endif %}"
-                               href="{{ url_for('admin.dashboard') }}">
-                                <i class="bi bi-speedometer2 me-2"></i>{{ _('Overview') }}
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'tickets.list_tickets' %}active{% endif %}"
-                               href="{{ url_for('tickets.list_tickets') }}">
-                                <i class="bi bi-list-ul me-2"></i>{{ _('Tickets') }}
-                            </a>
-                        </li>
-                        {% if current_user.can_edit %}
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'tickets.new_ticket' %}active{% endif %}"
-                               href="{{ url_for('tickets.new_ticket') }}">
-                                <i class="bi bi-plus-circle me-2"></i>{{ _('New ticket') }}
-                            </a>
-                        </li>
-                        {% endif %}
-                        <li class="nav-item">
-                            <a class="nav-link" href="{{ url_for('tickets.tv_dashboard') }}" target="_blank">
-                                <i class="bi bi-tv me-2"></i>{{ _('TV dashboard') }}
-                            </a>
-                        </li>
-                        {% if current_user.is_admin %}
-                        <li class="nav-item mt-3"><hr class="my-1"></li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if 'admin.users' in request.endpoint or 'admin.new_user' in request.endpoint or 'admin.edit_user' in request.endpoint or 'admin.user_qr' in request.endpoint %}active{% endif %}"
-                               href="{{ url_for('admin.users') }}">
-                                <i class="bi bi-people me-2"></i>{{ _('Users') }}
-                            </a>
-                        </li>
-                        <li class="nav-item">
-                            <a class="nav-link {% if request.endpoint == 'admin.categories' %}active{% endif %}"
-                               href="{{ url_for('admin.categories') }}">
-                                <i class="bi bi-tags me-2"></i>{{ _('Categories') }}
-                            </a>
-                        </li>
-                        {% endif %}
-                    </ul>
-                </div>
-            </div>
-            <div class="col-lg-10 col-md-9 main-content p-4">
+            <div class="col-12 main-content p-4">
                 {% block content %}{% endblock %}
             </div>
             {% else %}
@@ -231,6 +254,56 @@
     <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.3/dist/js/bootstrap.bundle.min.js"
             integrity="sha384-YvpcrYf0tY3lHB60NNkmXc5s9fDVZLESaAA55NDzOxhy9GkcIdslK1eN7N6jIeHz"
             crossorigin="anonymous"></script>
+    {% if current_user.is_authenticated %}
+    <script>
+    (function () {
+        const KEY = 'sidebarPinned';
+        const side = document.getElementById('sideMenu');
+        const btn = document.getElementById('pinToggle');
+        const icon = document.getElementById('pinIcon');
+        const label = document.getElementById('pinLabel');
+        const pinText = {{ _('Pin menu')|tojson }};
+        const unpinText = {{ _('Unpin menu')|tojson }};
+
+        function isPinned() { return localStorage.getItem(KEY) === '1'; }
+        function syncUI() {
+            if (isPinned()) {
+                document.body.classList.add('sidebar-pinned');
+                icon.className = 'bi bi-pin-fill me-1';
+                label.textContent = unpinText;
+            } else {
+                document.body.classList.remove('sidebar-pinned');
+                icon.className = 'bi bi-pin-angle me-1';
+                label.textContent = pinText;
+            }
+        }
+
+        btn.addEventListener('click', () => {
+            if (isPinned()) {
+                localStorage.removeItem(KEY);
+                bootstrap.Offcanvas.getInstance(side)?.hide();
+            } else {
+                localStorage.setItem(KEY, '1');
+            }
+            syncUI();
+        });
+
+        // When the drawer is hidden manually while pinned, unpin it so the
+        // two states never disagree.
+        side.addEventListener('hidden.bs.offcanvas', () => {
+            if (isPinned()) {
+                localStorage.removeItem(KEY);
+                syncUI();
+            }
+        });
+
+        syncUI();
+        if (isPinned()) {
+            bootstrap.Offcanvas.getOrCreateInstance(side).show();
+        }
+    })();
+    </script>
+    {% endif %}
     {% block extra_scripts %}{% endblock %}
 </body>
 </html>

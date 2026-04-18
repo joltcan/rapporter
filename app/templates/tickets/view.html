@@ -121,6 +121,14 @@
                 <img src="data:image/png;base64,{{ qr_b64 }}"
                      alt="QR" class="img-fluid mb-2" style="max-width: 220px;">
                 <div class="small text-muted mb-2">{{ _('Scan to open this ticket') }}</div>
+                {% if ticket.is_public and ticket.public_token %}
+                <div class="mb-2">
+                    <span class="badge bg-warning text-dark fs-6">
+                        <i class="bi bi-key-fill me-1"></i>{{ ticket.public_token }}
+                    </span>
+                    <div class="small text-muted">{{ _('Share password') }}</div>
+                </div>
+                {% endif %}
                 <div class="input-group input-group-sm mb-2">
                     <input type="text" class="form-control" value="{{ share_url }}" readonly id="shareUrl">
                     <button class="btn btn-outline-secondary" type="button" onclick="copyShare()">

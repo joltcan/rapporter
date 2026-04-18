@@ -10,6 +10,7 @@ Access rules:
 
 import io
 import base64
+import hmac
 from datetime import datetime, timezone
 from functools import wraps
 
@@ -31,8 +32,9 @@ from app.models import (
     Ticket, Category, TicketHistory, User,
     STATUSES, STATUS_NEW, STATUS_CLOSED, STATUS_REJECTED, TERMINAL_STATUSES,
     PRIORITIES, PRIORITY_P3,
+    _new_public_token,
 )
-from app import db
+from app import db, limiter
 from app.i18n import gettext as _, status_label, priority_label
 
 
@@ -211,13 +213,15 @@ def new_ticket():
     if form.validate_on_submit():
         cat = Category.get_or_create(form.category.data) if form.category.data else None
 
+        is_public = bool(form.is_public.data)
         ticket = Ticket(
             title=(form.title.data or "").strip() or None,
             description=form.description.data.strip(),
             feedback=(form.feedback.data or "").strip() or None,
             priority=form.priority.data,
             status=form.status.data,
-            is_public=bool(form.is_public.data),
+            is_public=is_public,
+            public_token=_new_public_token() if is_public else None,
             category=cat,
             reporter=current_user,
             created_at=form.created_at.data,
@@ -257,13 +261,19 @@ def new_ticket():
 @login_required
 def view_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
-    public_url = _public_url(ticket)
-    qr_b64 = _qr_png_b64(public_url if ticket.is_public else _internal_url(ticket))
+    # Heal legacy public tickets that were published before the token
+    # column existed -- make sure a public ticket always has a token so
+    # the QR code encodes a working URL.
+    if ticket.is_public and not ticket.public_token:
+        ticket.public_token = _new_public_token()
+        db.session.commit()
+    share_url = _public_url(ticket) if ticket.is_public else _internal_url(ticket)
+    qr_b64 = _qr_png_b64(share_url)
     return render_template(
         "tickets/view.html",
         ticket=ticket,
         qr_b64=qr_b64,
-        share_url=public_url if ticket.is_public else _internal_url(ticket),
+        share_url=share_url,
         history=ticket.history,
     )
 
@@ -297,11 +307,13 @@ def edit_ticket(ticket_id):
         ):
             new_closed_at = datetime.now(timezone.utc)
 
+        new_title = (form.title.data or "").strip() or None
+        new_description = form.description.data.strip()
+
         # --- Record change log ------------------------------------------
-        _log_change(ticket, "title", ticket.title,
-                    (form.title.data or "").strip() or None, current_user)
+        _log_change(ticket, "title", ticket.title, new_title, current_user)
         _log_change(ticket, "description", ticket.description,
-                    form.description.data.strip(), current_user)
+                    new_description, current_user)
         _log_change(ticket, "feedback", ticket.feedback,
                     (form.feedback.data or "").strip() or None, current_user)
         _log_change(ticket, "priority", ticket.priority, form.priority.data, current_user)
@@ -321,12 +333,21 @@ def edit_ticket(ticket_id):
                 new_cat.usage_count = (new_cat.usage_count or 0) + 1
 
         # --- Apply changes ----------------------------------------------
-        ticket.title = (form.title.data or "").strip() or None
-        ticket.description = form.description.data.strip()
+        ticket.title = new_title
+        ticket.description = new_description
         ticket.feedback = (form.feedback.data or "").strip() or None
         ticket.priority = form.priority.data
         ticket.status = new_status
-        ticket.is_public = bool(form.is_public.data)
+        now_public = bool(form.is_public.data)
+        ticket.is_public = now_public
+        # Token lifecycle: ensure a token exists while the ticket is
+        # public; clear it when it goes private. Covers the off->on
+        # transition and the legacy case where a public ticket has no
+        # token yet (pre-migration data).
+        if now_public and not ticket.public_token:
+            ticket.public_token = _new_public_token()
+        elif not now_public:
+            ticket.public_token = None
         ticket.category = new_cat
         ticket.created_at = form.created_at.data
         ticket.closed_at = new_closed_at
@@ -369,10 +390,15 @@ def delete_ticket(ticket_id):
 # Public view (anonymous -- shows only non-sensitive fields)
 # ---------------------------------------------------------------------------
 
-@tickets_bp.route("/p/<int:ticket_id>")
-def public_ticket(ticket_id):
+@tickets_bp.route("/p/<int:ticket_id>/<token>")
+@limiter.limit("30 per minute")
+def public_ticket(ticket_id, token):
     ticket = Ticket.query.get_or_404(ticket_id)
-    if not ticket.is_public:
+    # Reject if not public, no token on file, or token mismatch. Use a
+    # constant-time compare so timing doesn't leak the token.
+    if not ticket.is_public or not ticket.public_token:
+        abort(404)
+    if not hmac.compare_digest(ticket.public_token, token):
         abort(404)
     return render_template("tickets/public.html", ticket=ticket)
 
@@ -385,6 +411,9 @@ def public_ticket(ticket_id):
 @login_required
 def ticket_qr_png(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
+    if ticket.is_public and not ticket.public_token:
+        ticket.public_token = _new_public_token()
+        db.session.commit()
     url = _public_url(ticket) if ticket.is_public else _internal_url(ticket)
     buf = io.BytesIO()
     _qr_png(url).save(buf, format="PNG")
@@ -433,7 +462,9 @@ def _base_url():
 
 
 def _public_url(ticket):
-    return f"{_base_url()}/tickets/p/{ticket.id}"
+    if not ticket.public_token:
+        return None
+    return f"{_base_url()}/tickets/p/{ticket.id}/{ticket.public_token}"
 
 
 def _internal_url(ticket):

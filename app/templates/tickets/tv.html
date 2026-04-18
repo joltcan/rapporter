@@ -100,11 +100,12 @@
         .tv-card.p1 .priority { background: #c62828; }
         .tv-card.p2 .priority { background: #ef6c00; }
         .tv-card.p3 .priority { background: #2e7d32; }
-        .tv-card .title {
+        .tv-card .category {
             font-size: 1rem;
             color: #f0f6fc;
             line-height: 1.3;
             margin: 0.1rem 0;
+            font-weight: 600;
         }
         .tv-card .meta {
             color: #8b949e;
@@ -145,8 +146,8 @@
                         <span class="id">#{{ t.id }}</span>
                         <span class="priority">P{{ t.priority }}</span>
                     </div>
-                    {% if t.title %}
-                    <div class="title">{{ t.title }}</div>
+                    {% if t.category %}
+                    <div class="category">{{ t.category.display_name }}</div>
                     {% endif %}
                     <div class="meta">
                         <i class="bi bi-clock me-1"></i>

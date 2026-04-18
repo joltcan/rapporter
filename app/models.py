@@ -12,6 +12,15 @@ Priorities: 1 (P1 akut), 2 (P2 viktig), 3 (P3 lag)
 from datetime import datetime, timezone
 from flask_login import UserMixin
 from app import db
+from app.wordlist import random_word
+
+
+def _new_public_token():
+    """A single Swedish word used as a share secret. Kept short so it can
+    be read aloud or copied from a printed QR paper if needed; combined
+    with per-ticket uniqueness and rate limiting on the public endpoint
+    this is strong enough for the low-sensitivity public view."""
+    return random_word()
 
 
 # Role constants -- stored in the DB exactly as listed.
@@ -151,6 +160,10 @@ class Ticket(db.Model):
     category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=True)
     status = db.Column(db.String(20), nullable=False, default=STATUS_NEW)
     is_public = db.Column(db.Boolean, nullable=False, default=False)
+    # Auto-generated share secret. Only populated while is_public is True;
+    # cleared when the ticket is made private so re-sharing yields a fresh
+    # token and old links stop working.
+    public_token = db.Column(db.String(32), nullable=True, index=True)
 
     reporter_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 

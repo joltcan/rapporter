@@ -18,31 +18,6 @@
     <div class="row g-4">
         <div class="col-lg-8">
 
-            <!-- Title, description, feedback -->
-            <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-pencil me-2"></i>{{ _('Ticket') if false else _('Description') }}</div>
-                <div class="card-body">
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" for="title">{{ _('Title') }}</label>
-                        {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""),
-                           id="title", placeholder=_('Ticket title (optional, shown on dashboards)')) }}
-                    </div>
-                    <div class="mb-3">
-                        <label class="form-label fw-semibold" for="description">{{ _('Description') }} <span class="text-danger">*</span></label>
-                        {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""),
-                           id="description", placeholder=_('Describe what happened')) }}
-                        {% for error in form.description.errors %}
-                        <div class="invalid-feedback">{{ _(error) }}</div>
-                        {% endfor %}
-                    </div>
-                    <div class="mb-0">
-                        <label class="form-label fw-semibold" for="feedback">{{ _('Feedback') }}</label>
-                        {{ form.feedback(class="form-control" + (" is-invalid" if form.feedback.errors else ""),
-                           id="feedback", placeholder=_('Short feedback line')) }}
-                    </div>
-                </div>
-            </div>
-
             <!-- Classification -->
             <div class="card mb-3">
                 <div class="card-header"><i class="bi bi-tags me-2"></i>{{ _('Category') }} &amp; {{ _('Priority') }}</div>
@@ -74,25 +49,54 @@
                 </div>
             </div>
 
-            <!-- Timestamps -->
+            <!-- Description (primary) -->
             <div class="card mb-3">
-                <div class="card-header"><i class="bi bi-clock me-2"></i>{{ _('Created') }} / {{ _('Closed') }}</div>
+                <div class="card-header"><i class="bi bi-pencil me-2"></i>{{ _('Description') }}</div>
                 <div class="card-body">
-                    <div class="row g-3">
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="created_at">{{ _('Created') }}</label>
-                            {{ form.created_at(class="form-control" + (" is-invalid" if form.created_at.errors else ""),
-                               id="created_at") }}
-                            {% for error in form.created_at.errors %}
-                            <div class="invalid-feedback">{{ _(error) }}</div>
-                            {% endfor %}
+                    <label class="form-label fw-semibold visually-hidden" for="description">{{ _('Description') }}</label>
+                    {{ form.description(class="form-control" + (" is-invalid" if form.description.errors else ""),
+                       id="description", placeholder=_('Describe what happened')) }}
+                    {% for error in form.description.errors %}
+                    <div class="invalid-feedback">{{ _(error) }}</div>
+                    {% endfor %}
+                </div>
+            </div>
+
+            <!-- Extras (collapsible: title, feedback, timestamps) -->
+            <div class="card mb-3">
+                <div class="card-header d-flex justify-content-between align-items-center">
+                    <span><i class="bi bi-sliders me-2"></i>{{ _('More details') }}</span>
+                    <button class="btn btn-sm btn-outline-secondary" type="button"
+                            data-bs-toggle="collapse" data-bs-target="#extrasBody"
+                            aria-expanded="true" aria-controls="extrasBody">
+                        <i class="bi bi-chevron-down"></i>
+                    </button>
+                </div>
+                <div id="extrasBody" class="collapse show">
+                    <div class="card-body">
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="title">{{ _('Title') }}</label>
+                            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""),
+                               id="title", placeholder=_('Optional — keep blank if the description may be sensitive')) }}
                         </div>
-                        <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="closed_at">{{ _('Closed') }}</label>
-                            {{ form.closed_at(class="form-control" + (" is-invalid" if form.closed_at.errors else ""),
-                               id="closed_at") }}
-                            <div class="form-text">
-                                {{ _('Auto-filled when status is set to Resolved or Rejected.') if false else '' }}
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="feedback">{{ _('Feedback') }}</label>
+                            {{ form.feedback(class="form-control" + (" is-invalid" if form.feedback.errors else ""),
+                               id="feedback", placeholder=_('Short feedback line')) }}
+                        </div>
+                        <div class="row g-3">
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="created_at">{{ _('Created') }}</label>
+                                {{ form.created_at(class="form-control" + (" is-invalid" if form.created_at.errors else ""),
+                                   id="created_at") }}
+                                {% for error in form.created_at.errors %}
+                                <div class="invalid-feedback">{{ _(error) }}</div>
+                                {% endfor %}
+                            </div>
+                            <div class="col-md-6">
+                                <label class="form-label fw-semibold" for="closed_at">{{ _('Closed') }}</label>
+                                {{ form.closed_at(class="form-control" + (" is-invalid" if form.closed_at.errors else ""),
+                                   id="closed_at") }}
                             </div>
                         </div>
                     </div>

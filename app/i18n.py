@@ -64,7 +64,7 @@ TRANSLATIONS = {
         # --- Ticket fields ---
         "Title": "Titel",
         "Description": "Beskrivning",
-        "Feedback": "Återkoppling",
+        "Feedback": "Återkoppla till",
         "Priority": "Prioritet",
         "Category": "Kategori",
         "Status": "Status",
@@ -108,8 +108,14 @@ TRANSLATIONS = {
 
         # --- Ticket form ---
         "Ticket title (optional, shown on dashboards)": "Titel (valfri, visas på dashboard)",
+        "Optional — keep blank if the description may be sensitive":
+            "Valfritt — lämna tom om beskrivningen kan vara känslig",
+        "More details": "Fler detaljer",
+        "Pin menu": "Fäst menyn",
+        "Unpin menu": "Lossa menyn",
+        "Share password": "Delningslösenord",
         "Describe what happened": "Beskriv vad som hänt",
-        "Short feedback line": "Kort återkoppling",
+        "Short feedback line": "telefon/namn/annat",
         "Choose or type a new category": "Välj eller skriv in en ny kategori",
         "Make this ticket public":
             "Gör detta ärende publikt",
