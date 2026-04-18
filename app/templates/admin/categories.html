@@ -54,12 +54,19 @@
                                 {{ cat.usage_count }} {{ _('tickets') }}
                             </td>
                             <td class="text-end">
+                                <a href="{{ url_for('admin.edit_category', category_id=cat.id) }}"
+                                   class="btn btn-sm btn-outline-secondary"
+                                   title="{{ _('Rename') }}">
+                                    <i class="bi bi-pencil"></i>
+                                </a>
                                 {% if cat.usage_count == 0 %}
                                 <form method="POST"
                                       action="{{ url_for('admin.delete_category', category_id=cat.id) }}"
-                                      class="d-inline">
+                                      class="d-inline"
+                                      onsubmit="return confirm('{{ _('Remove this category?') }}');">
                                     <input type="hidden" name="csrf_token" value="{{ csrf_token() }}">
-                                    <button type="submit" class="btn btn-sm btn-outline-danger">
+                                    <button type="submit" class="btn btn-sm btn-outline-danger"
+                                            title="{{ _('Remove') }}">
                                         <i class="bi bi-trash"></i>
                                     </button>
                                 </form>

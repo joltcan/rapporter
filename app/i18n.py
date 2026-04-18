@@ -157,7 +157,15 @@ TRANSLATIONS = {
         "A category with this name already exists.": "En kategori med detta namn finns redan.",
         "Category added.": "Kategori tillagd.",
         "Category removed.": "Kategori borttagen.",
+        "Category renamed.": "Kategori omdöpt.",
+        "Category name is required.": "Kategorinamn krävs.",
         "Cannot remove a category that is in use.": "Kan inte ta bort en kategori som används.",
+        "Rename category": "Byt namn på kategori",
+        "Rename": "Byt namn",
+        "Remove": "Ta bort",
+        "Remove this category?": "Ta bort denna kategori?",
+        "Renaming will update all %(n)s tickets that use this category.":
+            "Namnbytet uppdaterar alla %(n)s ärenden som använder denna kategori.",
 
         # --- Users admin ---
         "Manage users": "Hantera användare",

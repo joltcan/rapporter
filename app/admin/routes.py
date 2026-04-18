@@ -295,6 +295,38 @@ def categories():
     )
 
 
+@admin_bp.route("/categories/<int:category_id>/edit", methods=["GET", "POST"])
+@login_required
+@admin_required
+def edit_category(category_id):
+    cat = Category.query.get_or_404(category_id)
+    # Seed the form with the current display name so the user can tweak
+    # casing or wording without retyping the whole thing.
+    form = CategoryForm(name=cat.display_name)
+    if form.validate_on_submit():
+        raw = form.name.data
+        normalised = Category.normalise(raw)
+        if not normalised:
+            flash(_("Category name is required."), "danger")
+        else:
+            clash = Category.query.filter_by(name=normalised).first()
+            if clash and clash.id != cat.id:
+                flash(_("A category with this name already exists."), "danger")
+            else:
+                display = raw.strip()
+                display = display[:1].upper() + display[1:] if display else normalised.capitalize()
+                cat.name = normalised
+                cat.display_name = display
+                db.session.commit()
+                flash(_("Category renamed."), "success")
+                return redirect(url_for("admin.categories"))
+    return render_template(
+        "admin/category_form.html",
+        form=form,
+        category=cat,
+    )
+
+
 @admin_bp.route("/categories/<int:category_id>/delete", methods=["POST"])
 @login_required
 @admin_required
