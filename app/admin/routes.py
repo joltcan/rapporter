@@ -103,7 +103,13 @@ class CategoryForm(FlaskForm):
 def dashboard():
     # Count per status (ignore statuses with zero rows gracefully).
     status_counts = {s: Ticket.query.filter_by(status=s).count() for s in STATUSES}
-    priority_counts = {p: Ticket.query.filter_by(priority=p).count() for p in PRIORITIES}
+    # Priority counts exclude closed/rejected tickets so the numbers match
+    # the "By priority" links, which land on open tickets for that priority.
+    open_statuses = (STATUS_NEW, STATUS_STARTED, STATUS_PAUSED)
+    priority_counts = {
+        p: Ticket.query.filter_by(priority=p).filter(Ticket.status.in_(open_statuses)).count()
+        for p in PRIORITIES
+    }
     total = Ticket.query.count()
     open_count = (
         status_counts.get(STATUS_NEW, 0)
@@ -140,6 +146,10 @@ def dashboard():
         queue_length=queue_length,
         status_counts=status_counts,
         priority_counts=priority_counts,
+        # Denominator for the "By priority" progress bars. Priority counts
+        # only include open tickets, so scaling to the open subtotal gives
+        # a meaningful comparison between priorities.
+        priority_total=sum(priority_counts.values()),
         recent=recent,
         latest=latest,
         statuses=STATUSES,

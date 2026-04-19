@@ -30,11 +30,13 @@ from wtforms.validators import DataRequired, Optional, Length, NumberRange
 from app.tickets import tickets_bp
 from app.models import (
     Ticket, Category, TicketHistory, User,
-    STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_CLOSED, STATUS_REJECTED,
+    STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_PAUSED, STATUS_CLOSED, STATUS_REJECTED,
     TERMINAL_STATUSES,
     PRIORITIES, PRIORITY_P3,
     _new_public_token,
 )
+
+OPEN_STATUSES = (STATUS_NEW, STATUS_STARTED, STATUS_PAUSED)
 
 # One-click forward transitions available on the ticket view. Paused and
 # rejected are off the happy path and remain manual-via-edit.
@@ -161,13 +163,23 @@ def _log_creation(ticket, user):
 @tickets_bp.route("/")
 @login_required
 def list_tickets():
-    status_f = request.args.get("status", "")
+    # Default to open tickets when the user hasn't touched the status
+    # filter. The list-filter form always submits status= (possibly empty
+    # for "Any status"), so an explicit "show everything" pick still works.
+    if "status" in request.args:
+        status_f = request.args.get("status", "")
+    else:
+        status_f = "open"
     priority_f = request.args.get("priority", "")
     category_f = request.args.get("category", type=int)
     search = request.args.get("search", "").strip()
 
     q = Ticket.query
-    if status_f and status_f in STATUSES:
+    # "open" is a pseudo-value covering the three non-terminal statuses,
+    # used by the Overview KPI cards. Concrete status slugs still work.
+    if status_f == "open":
+        q = q.filter(Ticket.status.in_(OPEN_STATUSES))
+    elif status_f and status_f in STATUSES:
         q = q.filter(Ticket.status == status_f)
     if priority_f:
         try:

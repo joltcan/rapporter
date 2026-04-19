@@ -104,6 +104,7 @@ TRANSLATIONS = {
         "Recently updated": "Senast ändrade",
         "Queue length": "Kölängd",
         "By priority": "Efter prioritet",
+        "By priority (open only)": "Efter prioritet (öppna)",
         "By status": "Efter status",
         "Latest tickets": "Senaste ärenden",
         "No tickets yet.": "Inga ärenden ännu.",
@@ -205,6 +206,7 @@ TRANSLATIONS = {
         "All": "Alla",
         "Any priority": "Alla prioriteter",
         "Any status": "Alla statusar",
+        "Open (all non-closed)": "Öppna (alla ej avslutade)",
         "Any category": "Alla kategorier",
     },
 }

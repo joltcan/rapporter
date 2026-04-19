@@ -22,6 +22,7 @@
                 <label class="form-label small text-muted mb-1">{{ _('Status') }}</label>
                 <select name="status" class="form-select form-select-sm">
                     <option value="">{{ _('Any status') }}</option>
+                    <option value="open" {% if filters.status == 'open' %}selected{% endif %}>{{ _('Open (all non-closed)') }}</option>
                     {% for s in statuses %}
                     <option value="{{ s }}" {% if filters.status == s %}selected{% endif %}>{{ status_label(s) }}</option>
                     {% endfor %}
