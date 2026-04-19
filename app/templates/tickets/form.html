@@ -75,11 +75,6 @@
                 <div id="extrasBody" class="collapse show">
                     <div class="card-body">
                         <div class="mb-3">
-                            <label class="form-label fw-semibold" for="title">{{ _('Title') }}</label>
-                            {{ form.title(class="form-control" + (" is-invalid" if form.title.errors else ""),
-                               id="title", placeholder=_('Optional — keep blank if the description may be sensitive')) }}
-                        </div>
-                        <div class="mb-3">
                             <label class="form-label fw-semibold" for="feedback">{{ _('Feedback') }}</label>
                             {{ form.feedback(class="form-control" + (" is-invalid" if form.feedback.errors else ""),
                                id="feedback", placeholder=_('Short feedback line')) }}

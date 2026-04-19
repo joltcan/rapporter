@@ -17,11 +17,7 @@
                     <span class="badge badge-{{ ticket.status }} fs-6">{{ status_label(ticket.status) }}</span>
                 </div>
                 <div class="card-body">
-                    {% if ticket.title %}
-                    <h4 class="fw-bold">{{ ticket.title }}</h4>
-                    {% endif %}
-
-                    <p class="mb-0 mt-2" style="white-space: pre-wrap;">{{ ticket.description }}</p>
+                    <p class="mb-0" style="white-space: pre-wrap;">{{ ticket.description }}</p>
 
                     <dl class="row mb-0 mt-4">
                         <dt class="col-sm-4 text-muted">{{ _('Category') }}</dt>

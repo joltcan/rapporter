@@ -81,10 +81,8 @@ class TicketForm(FlaskForm):
         format="%Y-%m-%dT%H:%M",
         validators=[Optional()],
     )
-    title = StringField(
-        "Title",
-        validators=[Optional(), Length(max=200)],
-    )
+    # `title` column is kept on the model for future LLM-generated
+    # summaries; no form field is exposed to users right now.
     priority = SelectField(
         "Priority",
         coerce=int,
@@ -235,7 +233,6 @@ def new_ticket():
 
         is_public = bool(form.is_public.data)
         ticket = Ticket(
-            title=(form.title.data or "").strip() or None,
             description=form.description.data.strip(),
             feedback=(form.feedback.data or "").strip() or None,
             priority=form.priority.data,
@@ -348,11 +345,9 @@ def edit_ticket(ticket_id):
         ):
             new_closed_at = None
 
-        new_title = (form.title.data or "").strip() or None
         new_description = form.description.data.strip()
 
         # --- Record change log ------------------------------------------
-        _log_change(ticket, "title", ticket.title, new_title, current_user)
         _log_change(ticket, "description", ticket.description,
                     new_description, current_user)
         _log_change(ticket, "feedback", ticket.feedback,
@@ -374,7 +369,6 @@ def edit_ticket(ticket_id):
                 new_cat.usage_count = (new_cat.usage_count or 0) + 1
 
         # --- Apply changes ----------------------------------------------
-        ticket.title = new_title
         ticket.description = new_description
         ticket.feedback = (form.feedback.data or "").strip() or None
         ticket.priority = form.priority.data

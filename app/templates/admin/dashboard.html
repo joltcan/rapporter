@@ -126,7 +126,7 @@
                         <td class="text-muted small">#{{ t.id }}</td>
                         <td><span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span></td>
                         <td><span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span></td>
-                        <td class="small">{{ t.title or (t.description or '')|truncate(40, True) }}</td>
+                        <td class="small">{{ (t.description or '')|truncate(40, True) }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}"
                                class="btn btn-sm btn-outline-primary">

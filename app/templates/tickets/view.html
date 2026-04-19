@@ -49,9 +49,6 @@
         <div class="card mb-3">
             <div class="card-header"><i class="bi bi-info-circle me-2"></i>{{ _('Ticket') if false else _('Description') }}</div>
             <div class="card-body">
-                {% if ticket.title %}
-                <h5 class="fw-bold mb-3">{{ ticket.title }}</h5>
-                {% endif %}
                 <p class="mb-0" style="white-space: pre-wrap;">{{ ticket.description }}</p>
             </div>
         </div>
