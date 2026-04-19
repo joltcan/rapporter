@@ -15,3 +15,4 @@ caddy_config/
 .claude/
 *.sql
 *.bz2
+.DS_Store
