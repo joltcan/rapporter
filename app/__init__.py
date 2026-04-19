@@ -1,6 +1,7 @@
 """Application factory for the Scout ticket system."""
 
 import os
+from datetime import timedelta
 from flask import Flask, redirect, url_for
 from flask_sqlalchemy import SQLAlchemy
 from flask_migrate import Migrate
@@ -59,6 +60,12 @@ def create_app():
     app.config["REMEMBER_COOKIE_SECURE"] = app.config["SESSION_COOKIE_SECURE"]
     app.config["REMEMBER_COOKIE_HTTPONLY"] = True
     app.config["WTF_CSRF_ENABLED"] = True
+
+    # Stay signed in for two weeks. Flask only honours this when the session
+    # is marked permanent, which the login route does after a successful
+    # sign-in. REMEMBER_COOKIE_DURATION covers the "Remember me" path.
+    app.config["PERMANENT_SESSION_LIFETIME"] = timedelta(days=14)
+    app.config["REMEMBER_COOKIE_DURATION"] = timedelta(days=30)
 
     # Base URL for QR codes (absolute links that devices scan).
     app.config["BASE_URL"] = os.environ.get("BASE_URL", "http://localhost")

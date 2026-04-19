@@ -1,6 +1,6 @@
 """Authentication routes -- login and logout."""
 
-from flask import render_template, redirect, url_for, flash, request
+from flask import render_template, redirect, url_for, flash, request, session
 from flask_login import login_user, logout_user, login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, BooleanField, SubmitField
@@ -54,6 +54,9 @@ def login():
     if form.validate_on_submit():
         user = User.query.filter_by(username=form.username.data.strip()).first()
         if user and user.check_password(form.password.data):
+            # Permanent sessions pick up PERMANENT_SESSION_LIFETIME (14 days)
+            # so users stay signed in across browser restarts by default.
+            session.permanent = True
             login_user(user, remember=form.remember.data)
             return _post_login_redirect(user)
         flash(_("Incorrect username or password."), "danger")
