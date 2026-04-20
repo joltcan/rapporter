@@ -106,6 +106,11 @@ class TicketForm(FlaskForm):
         "Feedback",
         validators=[Optional(), Length(max=500)],
     )
+    note = TextAreaField(
+        "Internal note",
+        validators=[Optional(), Length(max=10000)],
+        render_kw={"rows": 3},
+    )
     status = SelectField(
         "Status",
         choices=[(s, s) for s in STATUSES],
@@ -235,6 +240,7 @@ def new_ticket():
         ticket = Ticket(
             description=form.description.data.strip(),
             feedback=(form.feedback.data or "").strip() or None,
+            note=(form.note.data or "").strip() or None,
             priority=form.priority.data,
             status=form.status.data,
             is_public=is_public,
@@ -352,6 +358,8 @@ def edit_ticket(ticket_id):
                     new_description, current_user)
         _log_change(ticket, "feedback", ticket.feedback,
                     (form.feedback.data or "").strip() or None, current_user)
+        _log_change(ticket, "note", ticket.note,
+                    (form.note.data or "").strip() or None, current_user)
         _log_change(ticket, "priority", ticket.priority, form.priority.data, current_user)
         _log_change(ticket, "status", ticket.status, new_status, current_user)
         _log_change(ticket, "is_public", ticket.is_public, bool(form.is_public.data), current_user)
@@ -371,6 +379,7 @@ def edit_ticket(ticket_id):
         # --- Apply changes ----------------------------------------------
         ticket.description = new_description
         ticket.feedback = (form.feedback.data or "").strip() or None
+        ticket.note = (form.note.data or "").strip() or None
         ticket.priority = form.priority.data
         ticket.status = new_status
         now_public = bool(form.is_public.data)

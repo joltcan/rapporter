@@ -79,6 +79,16 @@
                             {{ form.feedback(class="form-control" + (" is-invalid" if form.feedback.errors else ""),
                                id="feedback", placeholder=_('Short feedback line')) }}
                         </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="note">
+                                <i class="bi bi-lock me-1"></i>{{ _('Internal note') }}
+                            </label>
+                            {{ form.note(class="form-control" + (" is-invalid" if form.note.errors else ""),
+                               id="note", placeholder=_('Only visible to signed-in users')) }}
+                            <div class="form-text small">
+                                {{ _('Only visible to signed-in users — never shown on the public share view.') }}
+                            </div>
+                        </div>
                         <div class="row g-3">
                             <div class="col-md-6">
                                 <label class="form-label fw-semibold" for="created_at">{{ _('Created') }}</label>

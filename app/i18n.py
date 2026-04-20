@@ -64,6 +64,11 @@ TRANSLATIONS = {
         "Title": "Titel",
         "Description": "Beskrivning",
         "Feedback": "Återkoppla till",
+        "Internal note": "Anteckning (intern)",
+        "Internal only": "Endast intern",
+        "Only visible to signed-in users": "Syns endast för inloggade användare",
+        "Only visible to signed-in users — never shown on the public share view.":
+            "Syns endast för inloggade användare — visas aldrig i den publika delningsvyn.",
         "Priority": "Prioritet",
         "Category": "Kategori",
         "Status": "Status",

@@ -154,6 +154,9 @@ class Ticket(db.Model):
     title = db.Column(db.String(200), nullable=True)
     description = db.Column(db.Text, nullable=False)
     feedback = db.Column(db.String(500), nullable=True)
+    # Free-form internal note. Only shown to signed-in users; never
+    # exposed on the public share view.
+    note = db.Column(db.Text, nullable=True)
 
     # Classification
     priority = db.Column(db.Integer, nullable=False, default=PRIORITY_P3)
