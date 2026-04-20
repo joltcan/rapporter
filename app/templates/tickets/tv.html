@@ -120,9 +120,35 @@
         .tv-footer {
             position: fixed;
             bottom: 10px;
-            right: 15px;
+            left: 15px;
             color: #6e7681;
             font-size: 0.8rem;
+            z-index: 10;
+        }
+        .tv-logo {
+            position: fixed;
+            bottom: 10px;
+            right: 15px;
+            background: #fff;
+            border-radius: 6px;
+            padding: 6px 10px 4px;
+            z-index: 10;
+            box-shadow: 0 2px 6px rgba(0,0,0,0.4);
+            text-align: center;
+        }
+        .tv-logo img {
+            height: 34px;
+            width: auto;
+            display: block;
+        }
+        .tv-logo .tv-logo-url {
+            display: block;
+            margin-top: 2px;
+            font-size: 0.75rem;
+            font-weight: 600;
+            color: #333;
+            text-decoration: none;
+            letter-spacing: 0.03em;
         }
     </style>
 </head>
@@ -168,6 +194,12 @@
 
     <div class="tv-footer">
         <i class="bi bi-arrow-repeat me-1"></i>{{ _('Updated %(time)s', time='') }}<span id="updated"></span>
+    </div>
+
+    <div class="tv-logo">
+        <img src="{{ url_for('static', filename='LLUW-xhorz-symbol+wordmark+tagline-RGB.svg') }}"
+             alt="LLUW">
+        <span class="tv-logo-url">lluw.it</span>
     </div>
 
     <script>
