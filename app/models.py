@@ -183,6 +183,29 @@ class Ticket(db.Model):
         return f"<Ticket #{self.id} {self.status}>"
 
 
+class UserAuditLog(db.Model):
+    """Audit log for user-account events. One row per field change
+    (or a '__created__' row on account creation). Passwords are logged
+    as a field change with empty values -- we never store the plaintext."""
+    __tablename__ = "user_audit_log"
+
+    id = db.Column(db.Integer, primary_key=True)
+    user_id = db.Column(
+        db.Integer, db.ForeignKey("users.id", ondelete="CASCADE"), nullable=False
+    )
+    actor_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
+    changed_at = db.Column(db.DateTime(timezone=True), nullable=False, default=_now_utc)
+    field = db.Column(db.String(40), nullable=False)
+    old_value = db.Column(db.Text, nullable=True)
+    new_value = db.Column(db.Text, nullable=True)
+
+    user = db.relationship("User", foreign_keys=[user_id])
+    actor = db.relationship("User", foreign_keys=[actor_id])
+
+    def __repr__(self):
+        return f"<UserAuditLog user={self.user_id} {self.field}>"
+
+
 class TicketHistory(db.Model):
     """Audit log for ticket changes. A single row represents one field
     changing on one ticket at one moment. Batched edits produce several

@@ -15,16 +15,58 @@ from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
 from wtforms import StringField, PasswordField, SelectField, SubmitField
 from wtforms.validators import DataRequired, Length, Optional, Regexp, ValidationError
+from wtforms.widgets import PasswordInput
 
 from app.admin import admin_bp
 from app.models import (
-    User, Category, Ticket,
+    User, Category, Ticket, UserAuditLog,
     ROLES, ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER,
     STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_CLOSED, STATUS_PAUSED, STATUS_REJECTED,
     PRIORITIES, PRIORITY_P1, PRIORITY_P2, PRIORITY_P3,
 )
 from app import db
 from app.i18n import gettext as _
+from app.wordlist import random_word
+
+
+def _log_user_event(user, field, old, new, actor):
+    """Append an audit-log row for a user-account event.
+
+    Caller commits. `field='__created__'` marks account creation;
+    `field='password'` is recorded with empty old/new so plaintext
+    is never persisted.
+    """
+    entry = UserAuditLog(
+        user_id=user.id,
+        actor_id=actor.id if actor and actor.is_authenticated else None,
+        field=field,
+        old_value=None if old is None else str(old),
+        new_value=None if new is None else str(new),
+    )
+    db.session.add(entry)
+
+
+def _suggest_password():
+    """Generate a human-friendly starter password: <word><NN><word>.
+
+    Two Swedish nouns wrapping a two-digit number -- readable,
+    typeable, and well above the 6-character minimum. The admin can
+    still overwrite it with anything they prefer before saving.
+
+    Words containing åäö are skipped so the generated password is
+    easy to type on any keyboard layout (mobile, foreign guests, etc.).
+    bcrypt handles UTF-8 fine; this is purely a distribution-UX choice.
+    """
+    import secrets
+
+    def _ascii_word():
+        while True:
+            w = random_word()
+            if w.isascii():
+                return w
+
+    n = secrets.randbelow(100)
+    return f"{_ascii_word()}{n:02d}{_ascii_word()}"
 
 
 # ---------------------------------------------------------------------------
@@ -64,9 +106,13 @@ class UserForm(FlaskForm):
             Regexp(r"^[A-Za-z0-9_.-]+$", message="Only letters, numbers and underscores."),
         ],
     )
+    # `hide_value=False` lets us pre-fill a generated starter password
+    # on the new-user form. Edit-form starts empty (field data is None),
+    # so this doesn't leak any existing hash.
     password = PasswordField(
         "Password",
         validators=[Optional(), Length(min=6, message="Password (min 6 characters).")],
+        widget=PasswordInput(hide_value=False),
     )
     role = SelectField(
         "Role",
@@ -174,6 +220,10 @@ def users():
 @admin_required
 def new_user():
     form = UserForm()
+    if request.method == "GET":
+        # Pre-fill with a memorable starter password so the admin has
+        # something to copy out of the box; they can still change it.
+        form.password.data = _suggest_password()
     if form.validate_on_submit():
         uname = form.username.data.strip()
         if User.query.filter_by(username=uname).first():
@@ -182,6 +232,8 @@ def new_user():
             user = User(username=uname, role=form.role.data)
             user.set_password(form.password.data)
             db.session.add(user)
+            db.session.flush()
+            _log_user_event(user, "__created__", None, None, current_user)
             db.session.commit()
             flash(_("User %(name)s created.", name=user.username), "success")
             return redirect(url_for("admin.users"))
@@ -207,20 +259,32 @@ def edit_user(user_id):
         if clash and clash.id != user.id:
             flash(_("Username already taken."), "danger")
         else:
-            user.username = uname
-            user.role = form.role.data
+            if uname != user.username:
+                _log_user_event(user, "username", user.username, uname, current_user)
+                user.username = uname
+            if form.role.data != user.role:
+                _log_user_event(user, "role", user.role, form.role.data, current_user)
+                user.role = form.role.data
             if form.password.data:
                 user.set_password(form.password.data)
+                _log_user_event(user, "password", None, None, current_user)
             db.session.commit()
             flash(_("User %(name)s updated.", name=user.username), "success")
             return redirect(url_for("admin.users"))
 
+    audit_log = (
+        UserAuditLog.query
+        .filter_by(user_id=user.id)
+        .order_by(UserAuditLog.changed_at.desc())
+        .all()
+    )
     return render_template(
         "admin/user_form.html",
         form=form,
         title=_("Edit user"),
         edit_mode=True,
         user=user,
+        audit_log=audit_log,
     )
 
 

@@ -187,6 +187,12 @@ TRANSLATIONS = {
         "User %(name)s removed.": "Användare %(name)s borttagen.",
         "You cannot remove your own account.": "Du kan inte ta bort ditt eget konto.",
         "QR code": "QR-kod",
+        "Activity log": "Aktivitetslogg",
+        "Copy password": "Kopiera lösenord",
+        "created the account": "skapade kontot",
+        "changed password": "ändrade lösenordet",
+        "changed role": "ändrade roll",
+        "changed username": "ändrade användarnamn",
 
         # --- TV dashboard ---
         "Live ticket board": "Live-tavla",

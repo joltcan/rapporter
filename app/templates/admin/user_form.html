@@ -41,6 +41,10 @@
                                     aria-label="Show/hide password">
                                 <i class="bi bi-eye" id="togglePwdIcon"></i>
                             </button>
+                            <button class="btn btn-outline-secondary" type="button" id="copyPwd"
+                                    aria-label="{{ _('Copy password') }}" title="{{ _('Copy password') }}">
+                                <i class="bi bi-clipboard" id="copyPwdIcon"></i>
+                            </button>
                             {% for error in form.password.errors %}
                             <div class="invalid-feedback">{{ _(error) }}</div>
                             {% endfor %}
@@ -83,6 +87,42 @@
                 </a>
             </div>
         </div>
+
+        <div class="card mt-3">
+            <div class="card-header">
+                <i class="bi bi-clock-history me-2"></i>{{ _('Activity log') }}
+            </div>
+            <div class="card-body">
+                {% if audit_log %}
+                <ul class="list-unstyled mb-0 small">
+                    {% for h in audit_log %}
+                    <li class="mb-2">
+                        <span class="text-muted">{{ h.changed_at.strftime('%Y-%m-%d %H:%M') }}</span>
+                        &middot;
+                        <strong>{{ h.actor.username if h.actor else '—' }}</strong>
+                        {% if h.field == '__created__' %}
+                        {{ _('created the account') }}
+                        {% elif h.field == 'password' %}
+                        {{ _('changed password') }}
+                        {% elif h.field == 'role' %}
+                        {{ _('changed role') }}
+                        {{ _('from') }} <em>{{ role_label(h.old_value) if h.old_value else _('(empty)') }}</em>
+                        {{ _('to') }} <em>{{ role_label(h.new_value) if h.new_value else _('(empty)') }}</em>
+                        {% elif h.field == 'username' %}
+                        {{ _('changed username') }}
+                        {{ _('from') }} <em>{{ h.old_value or _('(empty)') }}</em>
+                        {{ _('to') }} <em>{{ h.new_value or _('(empty)') }}</em>
+                        {% else %}
+                        {{ _('changed') }} <code>{{ h.field }}</code>
+                        {% endif %}
+                    </li>
+                    {% endfor %}
+                </ul>
+                {% else %}
+                <p class="text-muted mb-0 small">{{ _('No changes yet.') }}</p>
+                {% endif %}
+            </div>
+        </div>
         {% endif %}
     </div>
 </div>
@@ -100,6 +140,28 @@ document.getElementById('togglePwd').addEventListener('click', function () {
         pwd.type = 'password';
         icon.classList.replace('bi-eye-slash', 'bi-eye');
     }
+});
+{% if not edit_mode %}
+// New-user form: starter password is pre-generated; show it by default
+// so the admin can read/copy it without having to click the eye toggle.
+(function () {
+    const pwd = document.getElementById('pwd');
+    const icon = document.getElementById('togglePwdIcon');
+    pwd.type = 'text';
+    icon.classList.replace('bi-eye', 'bi-eye-slash');
+})();
+{% endif %}
+
+document.getElementById('copyPwd').addEventListener('click', function () {
+    const pwd = document.getElementById('pwd');
+    const icon = document.getElementById('copyPwdIcon');
+    if (!pwd.value) return;
+    navigator.clipboard.writeText(pwd.value).then(function () {
+        icon.classList.replace('bi-clipboard', 'bi-clipboard-check');
+        setTimeout(function () {
+            icon.classList.replace('bi-clipboard-check', 'bi-clipboard');
+        }, 1200);
+    });
 });
 </script>
 {% endblock %}
