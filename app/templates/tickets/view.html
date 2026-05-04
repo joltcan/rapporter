@@ -124,6 +124,12 @@
                         {% if ticket.category %}<span class="badge bg-light text-dark border">{{ ticket.category.display_name }}</span>
                         {% else %}–{% endif %}
                     </dd>
+                    <dt class="col-5">{{ _('Tags') }}</dt>
+                    <dd class="col-7">
+                        {% for tag in ticket.tags %}
+                        <span class="badge bg-secondary-subtle text-secondary-emphasis border me-1 mb-1">{{ tag.display_name }}</span>
+                        {% else %}<span class="text-muted">–</span>{% endfor %}
+                    </dd>
                     <dt class="col-5">{{ _('Created') }}</dt>
                     <dd class="col-7">{{ ticket.created_at.strftime('%Y-%m-%d %H:%M') if ticket.created_at else '–' }}</dd>
                     <dt class="col-5">{{ _('Updated') }}</dt>

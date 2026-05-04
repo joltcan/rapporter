@@ -153,7 +153,7 @@ TRANSLATIONS = {
         "Ticket status": "Ärendestatus",
         "This ticket is not public.": "Detta ärende är inte publikt.",
 
-        # --- Categories admin ---
+        # --- Categories admin (top-level groups) ---
         "Manage categories": "Hantera kategorier",
         "Category name": "Kategorinamn",
         "Used in": "Används i",
@@ -166,12 +166,45 @@ TRANSLATIONS = {
         "Category renamed.": "Kategori omdöpt.",
         "Category name is required.": "Kategorinamn krävs.",
         "Cannot remove a category that is in use.": "Kan inte ta bort en kategori som används.",
+        "The default category cannot be removed.": "Standardkategorin kan inte tas bort.",
         "Rename category": "Byt namn på kategori",
         "Rename": "Byt namn",
         "Remove": "Ta bort",
         "Remove this category?": "Ta bort denna kategori?",
-        "Renaming will update all %(n)s tickets that use this category.":
-            "Namnbytet uppdaterar alla %(n)s ärenden som använder denna kategori.",
+        "Sort": "Ordning",
+        "Sort order": "Sorteringsordning",
+        "Lower numbers come first.": "Lägre nummer kommer först.",
+        "Top-level categories group tickets at a glance. Each ticket belongs to exactly one. Free-form labels live under Tags.":
+            "Övergripande kategorier grupperar ärenden överskådligt. Varje ärende tillhör exakt en. Fria etiketter finns under Taggar.",
+
+        # --- Tags admin ---
+        "Tag": "Tagg",
+        "Tags": "Taggar",
+        "Manage tags": "Hantera taggar",
+        "New tag": "Ny tagg",
+        "Edit tag": "Redigera tagg",
+        "Tag name": "Taggnamn",
+        "No tags yet.": "Inga taggar ännu.",
+        "Any tag": "Alla taggar",
+        "A tag with this name already exists.": "En tagg med detta namn finns redan.",
+        "Tag added.": "Tagg tillagd.",
+        "Tag removed.": "Tagg borttagen.",
+        "Tag renamed.": "Tagg omdöpt.",
+        "Tag name is required.": "Taggnamn krävs.",
+        "Cannot remove a tag that is in use.": "Kan inte ta bort en tagg som används.",
+        "Remove this tag?": "Ta bort denna tagg?",
+        "In categories": "I kategorier",
+        "Belongs to categories": "Tillhör kategorier",
+        "A tag can be linked to any number of top-level categories. Used by analysis views.":
+            "En tagg kan kopplas till valfritt antal övergripande kategorier. Används av analysvyer.",
+        "Tags are free-form labels used mainly for analysis. Editors create them on the fly when filing tickets; admins can rename, remove unused, and link them to one or more top-level categories.":
+            "Taggar är fria etiketter för analys i efterhand. Redaktörer skapar dem direkt vid rapportering; admins kan döpa om, ta bort oanvända och koppla dem till en eller flera kategorier.",
+
+        # --- Ticket form (tags) ---
+        "Comma-separated, e.g. matlagning, tält":
+            "Kommaseparerade, t.ex. matlagning, tält",
+        "Free-form labels. Type a new one or pick existing.":
+            "Fria etiketter. Skriv en ny eller välj en befintlig.",
 
         # --- Users admin ---
         "Manage users": "Hantera användare",

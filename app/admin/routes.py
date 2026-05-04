@@ -19,7 +19,8 @@ from wtforms.widgets import PasswordInput
 
 from app.admin import admin_bp
 from app.models import (
-    User, Category, Ticket, UserAuditLog,
+    User, Category, Tag, Ticket, UserAuditLog,
+    DEFAULT_CATEGORY_SLUG,
     ROLES, ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER,
     STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_CLOSED, STATUS_PAUSED, STATUS_REJECTED,
     PRIORITIES, PRIORITY_P1, PRIORITY_P2, PRIORITY_P3,
@@ -134,6 +135,20 @@ class UserForm(FlaskForm):
 class CategoryForm(FlaskForm):
     name = StringField(
         "Category name",
+        validators=[DataRequired(), Length(min=1, max=80)],
+    )
+    sort_order = StringField(
+        "Sort order",
+        # Stored as integer in the model; coerced in the route. Optional
+        # so admins can leave it blank and accept the default of 0.
+        validators=[Optional(), Length(max=6)],
+    )
+    submit = SubmitField("Save")
+
+
+class TagForm(FlaskForm):
+    name = StringField(
+        "Tag name",
         validators=[DataRequired(), Length(min=1, max=80)],
     )
     submit = SubmitField("Save")
@@ -340,8 +355,22 @@ def download_qr(user_id):
 
 
 # ---------------------------------------------------------------------------
-# Category management
+# Category management -- top-level groups (Säkerhet, Miljö, Hälsa, Väder,
+# Övrigt by default). Admin-managed: editors and viewers can read but not
+# modify the list.
 # ---------------------------------------------------------------------------
+
+def _parse_sort_order(raw):
+    """Coerce the form's sort_order text input to an int. Empty string
+    becomes 0 (the model default); non-numeric input also falls back to
+    0 so a typo doesn't block the save."""
+    if raw is None or raw == "":
+        return 0
+    try:
+        return int(raw)
+    except (TypeError, ValueError):
+        return 0
+
 
 @admin_bp.route("/categories", methods=["GET", "POST"])
 @login_required
@@ -356,15 +385,30 @@ def categories():
         elif Category.query.filter_by(name=normalised).first():
             flash(_("A category with this name already exists."), "danger")
         else:
-            Category.get_or_create(raw)
+            display = raw.strip()
+            display = display[:1].upper() + display[1:] if display else normalised.capitalize()
+            cat = Category(
+                name=normalised,
+                display_name=display,
+                sort_order=_parse_sort_order(form.sort_order.data),
+            )
+            db.session.add(cat)
             db.session.commit()
             flash(_("Category added."), "success")
             return redirect(url_for("admin.categories"))
 
-    all_categories = Category.query.order_by(Category.display_name).all()
+    all_categories = Category.query.order_by(
+        Category.sort_order.asc(), Category.display_name.asc()
+    ).all()
+    # Pre-compute usage counts so the template can disable delete on any
+    # in-use category without N+1 queries.
+    usage = {
+        c.id: c.tickets.count() for c in all_categories
+    }
     return render_template(
         "admin/categories.html",
         categories=all_categories,
+        usage=usage,
         form=form,
     )
 
@@ -374,9 +418,7 @@ def categories():
 @admin_required
 def edit_category(category_id):
     cat = Category.query.get_or_404(category_id)
-    # Seed the form with the current display name so the user can tweak
-    # casing or wording without retyping the whole thing.
-    form = CategoryForm(name=cat.display_name)
+    form = CategoryForm(name=cat.display_name, sort_order=str(cat.sort_order))
     if form.validate_on_submit():
         raw = form.name.data
         normalised = Category.normalise(raw)
@@ -391,6 +433,7 @@ def edit_category(category_id):
                 display = display[:1].upper() + display[1:] if display else normalised.capitalize()
                 cat.name = normalised
                 cat.display_name = display
+                cat.sort_order = _parse_sort_order(form.sort_order.data)
                 db.session.commit()
                 flash(_("Category renamed."), "success")
                 return redirect(url_for("admin.categories"))
@@ -406,13 +449,108 @@ def edit_category(category_id):
 @admin_required
 def delete_category(category_id):
     cat = Category.query.get_or_404(category_id)
-    if cat.tickets.count() > 0:
+    # Don't let the default category be removed -- new tickets fall back
+    # to it, so its absence would break the create form.
+    if cat.name == DEFAULT_CATEGORY_SLUG:
+        flash(_("The default category cannot be removed."), "danger")
+    elif cat.tickets.count() > 0:
         flash(_("Cannot remove a category that is in use."), "danger")
     else:
         db.session.delete(cat)
         db.session.commit()
         flash(_("Category removed."), "success")
     return redirect(url_for("admin.categories"))
+
+
+# ---------------------------------------------------------------------------
+# Tag management -- free-form labels editors create on the fly when
+# filing tickets. Admins can rename, delete unused, and curate which
+# top-level categories each tag belongs to (m2m, optional).
+# ---------------------------------------------------------------------------
+
+@admin_bp.route("/tags", methods=["GET", "POST"])
+@login_required
+@admin_required
+def tags():
+    form = TagForm()
+    if form.validate_on_submit():
+        raw = form.name.data
+        normalised = Tag.normalise(raw)
+        if not normalised:
+            flash(_("Tag name is required."), "danger")
+        elif Tag.query.filter_by(name=normalised).first():
+            flash(_("A tag with this name already exists."), "danger")
+        else:
+            Tag.get_or_create(raw)
+            db.session.commit()
+            flash(_("Tag added."), "success")
+            return redirect(url_for("admin.tags"))
+
+    all_tags = Tag.query.order_by(Tag.display_name.asc()).all()
+    usage = {t.id: t.tickets.count() for t in all_tags}
+    return render_template(
+        "admin/tags.html",
+        tags=all_tags,
+        usage=usage,
+        form=form,
+    )
+
+
+@admin_bp.route("/tags/<int:tag_id>/edit", methods=["GET", "POST"])
+@login_required
+@admin_required
+def edit_tag(tag_id):
+    tag = Tag.query.get_or_404(tag_id)
+    form = TagForm(name=tag.display_name)
+    all_categories = Category.query.order_by(
+        Category.sort_order.asc(), Category.display_name.asc()
+    ).all()
+    if request.method == "POST" and form.validate_on_submit():
+        raw = form.name.data
+        normalised = Tag.normalise(raw)
+        if not normalised:
+            flash(_("Tag name is required."), "danger")
+        else:
+            clash = Tag.query.filter_by(name=normalised).first()
+            if clash and clash.id != tag.id:
+                flash(_("A tag with this name already exists."), "danger")
+            else:
+                display = raw.strip()
+                display = display[:1].upper() + display[1:] if display else normalised.capitalize()
+                tag.name = normalised
+                tag.display_name = display
+                # Update tag-category membership from checkbox state.
+                # Each checkbox is named cat_<id>; only the IDs that
+                # come back through request.form are kept.
+                selected_ids = {
+                    int(v)
+                    for k, v in request.form.items()
+                    if k.startswith("cat_") and v.isdigit()
+                }
+                tag.categories = [c for c in all_categories if c.id in selected_ids]
+                db.session.commit()
+                flash(_("Tag renamed."), "success")
+                return redirect(url_for("admin.tags"))
+    return render_template(
+        "admin/tag_form.html",
+        form=form,
+        tag=tag,
+        all_categories=all_categories,
+    )
+
+
+@admin_bp.route("/tags/<int:tag_id>/delete", methods=["POST"])
+@login_required
+@admin_required
+def delete_tag(tag_id):
+    tag = Tag.query.get_or_404(tag_id)
+    if tag.tickets.count() > 0:
+        flash(_("Cannot remove a tag that is in use."), "danger")
+    else:
+        db.session.delete(tag)
+        db.session.commit()
+        flash(_("Tag removed."), "success")
+    return redirect(url_for("admin.tags"))
 
 
 # ---------------------------------------------------------------------------

@@ -86,21 +86,33 @@ class User(UserMixin, db.Model):
         return self.role in (ROLE_ADMIN, ROLE_EDITOR)
 
 
+# Default top-level category every ticket falls back to when nothing
+# more specific is picked. Admins may rename it but the slug is fixed
+# so the seed migration and the form-default lookup always agree.
+DEFAULT_CATEGORY_SLUG = "ovrigt"
+
+
 class Category(db.Model):
-    """Ticket category. The `name` column stores a normalised (lowercase,
-    trimmed) key so duplicates are impossible. `display_name` preserves the
-    casing the user originally typed so we can render it as they entered it
-    (the UI itself always capitalises the first letter for consistency).
+    """Top-level grouping of tickets (Säkerhet, Miljö, Hälsa, Väder,
+    Övrigt by default). Admin-managed: created and removed from the
+    /admin/categories page. Each ticket belongs to exactly one Category;
+    free-form labels live on the separate Tag model.
     """
     __tablename__ = "categories"
 
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80), nullable=False)
-    usage_count = db.Column(db.Integer, nullable=False, default=0)
+    # Manual ordering -- categories render in this order in dropdowns,
+    # admin lists, and the morning report. Defaults to 0 so newly added
+    # categories sort to the top until the admin slots them in.
+    sort_order = db.Column(db.Integer, nullable=False, default=0)
     created_at = db.Column(db.DateTime(timezone=True), default=_now_utc)
 
     tickets = db.relationship("Ticket", back_populates="category", lazy="dynamic")
+    tags = db.relationship(
+        "Tag", secondary="tag_categories", back_populates="categories"
+    )
 
     def __repr__(self):
         return f"<Category {self.name}>"
@@ -108,28 +120,96 @@ class Category(db.Model):
     @staticmethod
     def normalise(raw):
         """Strip surrounding whitespace and lowercase. Collapses internal
-        whitespace so that 'Matlagning  ' and 'matlagning' match."""
+        whitespace so 'Säkerhet  ' and 'säkerhet' match."""
+        if raw is None:
+            return ""
+        return " ".join(raw.strip().lower().split())
+
+
+class Tag(db.Model):
+    """Free-form ticket label, used mainly for after-the-fact analysis.
+    A ticket can carry many tags; a tag may belong to zero or more
+    top-level Categories.
+
+    Like the previous Category model: `name` is the normalised slug
+    used for de-dup, `display_name` keeps the casing the user typed.
+    """
+    __tablename__ = "tags"
+
+    id = db.Column(db.Integer, primary_key=True)
+    name = db.Column(db.String(80), unique=True, nullable=False)
+    display_name = db.Column(db.String(80), nullable=False)
+    created_at = db.Column(db.DateTime(timezone=True), default=_now_utc)
+
+    tickets = db.relationship(
+        "Ticket", secondary="ticket_tags", back_populates="tags", lazy="dynamic"
+    )
+    categories = db.relationship(
+        "Category", secondary="tag_categories", back_populates="tags"
+    )
+
+    def __repr__(self):
+        return f"<Tag {self.name}>"
+
+    @staticmethod
+    def normalise(raw):
         if raw is None:
             return ""
         return " ".join(raw.strip().lower().split())
 
     @classmethod
     def get_or_create(cls, raw_name):
-        """Look up (by normalised name) or create a Category. Returns None
-        for empty input."""
+        """Look up by normalised name, or create a new Tag. Returns None
+        for empty input. Preserves the caller's preferred casing for
+        display, with the first letter capitalised."""
         name = cls.normalise(raw_name)
         if not name:
             return None
-        cat = cls.query.filter_by(name=name).first()
-        if cat is None:
-            # Preserve the caller's preferred casing for display, with the
-            # first letter capitalised so the UI looks tidy.
+        tag = cls.query.filter_by(name=name).first()
+        if tag is None:
             display = raw_name.strip()
             display = display[:1].upper() + display[1:] if display else name.capitalize()
-            cat = cls(name=name, display_name=display, usage_count=0)
-            db.session.add(cat)
+            tag = cls(name=name, display_name=display)
+            db.session.add(tag)
             db.session.flush()
-        return cat
+        return tag
+
+
+# Association tables for the two many-to-many relationships introduced
+# alongside the category/tag split. Defined as Tables (not models) since
+# they carry no extra columns; cascade deletes handle cleanup when the
+# parent rows are removed.
+ticket_tags = db.Table(
+    "ticket_tags",
+    db.Column(
+        "ticket_id",
+        db.Integer,
+        db.ForeignKey("tickets.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "tag_id",
+        db.Integer,
+        db.ForeignKey("tags.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
+
+tag_categories = db.Table(
+    "tag_categories",
+    db.Column(
+        "tag_id",
+        db.Integer,
+        db.ForeignKey("tags.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+    db.Column(
+        "category_id",
+        db.Integer,
+        db.ForeignKey("categories.id", ondelete="CASCADE"),
+        primary_key=True,
+    ),
+)
 
 
 class Ticket(db.Model):
@@ -160,7 +240,12 @@ class Ticket(db.Model):
 
     # Classification
     priority = db.Column(db.Integer, nullable=False, default=PRIORITY_P3)
-    category_id = db.Column(db.Integer, db.ForeignKey("categories.id"), nullable=True)
+    # Top-level category. Required at the DB level: every ticket must
+    # land somewhere, with "Övrigt" as the default fallback. Routes set
+    # the FK to the seeded default when the user doesn't pick one.
+    category_id = db.Column(
+        db.Integer, db.ForeignKey("categories.id"), nullable=False
+    )
     status = db.Column(db.String(20), nullable=False, default=STATUS_NEW)
     is_public = db.Column(db.Boolean, nullable=False, default=False)
     # Auto-generated share secret. Only populated while is_public is True;
@@ -171,6 +256,10 @@ class Ticket(db.Model):
     reporter_id = db.Column(db.Integer, db.ForeignKey("users.id"), nullable=True)
 
     category = db.relationship("Category", back_populates="tickets")
+    tags = db.relationship(
+        "Tag", secondary="ticket_tags", back_populates="tickets",
+        order_by="Tag.display_name",
+    )
     reporter = db.relationship("User", back_populates="tickets")
     history = db.relationship(
         "TicketHistory",

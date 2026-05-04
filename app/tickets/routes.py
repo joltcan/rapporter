@@ -30,7 +30,8 @@ from wtforms.validators import DataRequired, Optional, Length, NumberRange
 
 from app.tickets import tickets_bp
 from app.models import (
-    Ticket, Category, TicketHistory, User,
+    Ticket, Category, Tag, TicketHistory, User,
+    DEFAULT_CATEGORY_SLUG,
     STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_PAUSED, STATUS_CLOSED, STATUS_REJECTED,
     TERMINAL_STATUSES,
     PRIORITIES, PRIORITY_P3,
@@ -91,12 +92,20 @@ class TicketForm(FlaskForm):
         default=PRIORITY_P3,
         validators=[DataRequired()],
     )
-    # Category is submitted as a free-text field so users can either pick
-    # an existing one (via datalist autocomplete) or type a new one. The
-    # server normalises and looks it up in the Category table.
-    category = StringField(
+    # Category is the top-level grouping (admin-managed). Choices are
+    # populated from the DB at instantiation; the route adds a default
+    # so a category is always selected.
+    category_id = SelectField(
         "Category",
-        validators=[Optional(), Length(max=80)],
+        coerce=int,
+        validators=[DataRequired()],
+    )
+    # Tags are a free-form comma-separated list. Existing tags are
+    # offered via a datalist for autocomplete; new ones are created on
+    # the fly via Tag.get_or_create.
+    tags = StringField(
+        "Tags",
+        validators=[Optional(), Length(max=500)],
     )
     description = TextAreaField(
         "Description",
@@ -120,6 +129,62 @@ class TicketForm(FlaskForm):
     )
     is_public = BooleanField("Public")
     submit = SubmitField("Save ticket")
+
+
+# ---------------------------------------------------------------------------
+# Category / tag helpers
+# ---------------------------------------------------------------------------
+
+def _category_choices():
+    """Build the (id, label) tuple list driving the category dropdown.
+    Sorted by sort_order then display_name so admin curation sticks."""
+    return [
+        (c.id, c.display_name)
+        for c in Category.query.order_by(
+            Category.sort_order.asc(), Category.display_name.asc()
+        ).all()
+    ]
+
+
+def _default_category():
+    """The fallback Category every form starts on. Looked up by slug
+    so renaming Övrigt's display label in the admin UI doesn't break
+    this -- only deleting the slug would, which the admin UI prevents
+    for in-use categories."""
+    return Category.query.filter_by(name=DEFAULT_CATEGORY_SLUG).first()
+
+
+def _parse_tags_input(raw):
+    """Split a free-form 'a, b, c' string into a normalised list of
+    Tag rows. Whitespace and duplicates are collapsed; blank entries
+    are dropped. New tag names are created on the fly so editors don't
+    have to pre-create them."""
+    if not raw:
+        return []
+    seen = set()
+    result = []
+    for chunk in raw.split(","):
+        norm = Tag.normalise(chunk)
+        if not norm or norm in seen:
+            continue
+        seen.add(norm)
+        tag = Tag.get_or_create(chunk)
+        if tag is not None:
+            result.append(tag)
+    return result
+
+
+def _format_tags(tags):
+    """Render the current tags on a ticket back to the comma-separated
+    text shown in the form input. Order matches the relationship's
+    display_name sort so the field is stable across reads/writes."""
+    return ", ".join(t.display_name for t in tags)
+
+
+def _populate_category_field(form):
+    """Attach the dynamic category choices to a TicketForm instance.
+    Called from every route that renders the form."""
+    form.category_id.choices = _category_choices()
 
 
 # ---------------------------------------------------------------------------
@@ -176,6 +241,7 @@ def list_tickets():
         status_f = "open"
     priority_f = request.args.get("priority", "")
     category_f = request.args.get("category", type=int)
+    tag_f = request.args.get("tag", type=int)
     search = request.args.get("search", "").strip()
 
     q = Ticket.query
@@ -194,6 +260,8 @@ def list_tickets():
             pass
     if category_f:
         q = q.filter(Ticket.category_id == category_f)
+    if tag_f:
+        q = q.filter(Ticket.tags.any(Tag.id == tag_f))
     if search:
         like = f"%{search}%"
         q = q.filter(db.or_(
@@ -203,18 +271,23 @@ def list_tickets():
         ))
 
     tickets = q.order_by(Ticket.priority.asc(), Ticket.created_at.desc()).all()
-    categories = Category.query.order_by(Category.display_name).all()
+    categories = Category.query.order_by(
+        Category.sort_order.asc(), Category.display_name.asc()
+    ).all()
+    tags = Tag.query.order_by(Tag.display_name.asc()).all()
 
     return render_template(
         "tickets/list.html",
         tickets=tickets,
         categories=categories,
+        tags=tags,
         statuses=STATUSES,
         priorities=PRIORITIES,
         filters={
             "status": status_f,
             "priority": priority_f,
             "category": category_f,
+            "tag": tag_f,
             "search": search,
         },
     )
@@ -229,13 +302,24 @@ def list_tickets():
 @editor_required
 def new_ticket():
     form = TicketForm()
+    _populate_category_field(form)
 
     if request.method == "GET":
         # Pre-fill timestamp with "now" in local time for the datetime-local input.
         form.created_at.data = datetime.now()
+        # Default to Övrigt so the dropdown isn't blank on first paint.
+        default = _default_category()
+        if default is not None:
+            form.category_id.data = default.id
 
     if form.validate_on_submit():
-        cat = Category.get_or_create(form.category.data) if form.category.data else None
+        cat = Category.query.get(form.category_id.data)
+        if cat is None:
+            # Belt-and-braces: SelectField validation should have caught
+            # this, but if a category was deleted between page load and
+            # submit, fall back to the default rather than 500'ing.
+            cat = _default_category()
+        tag_objs = _parse_tags_input(form.tags.data)
 
         is_public = bool(form.is_public.data)
         ticket = Ticket(
@@ -247,6 +331,7 @@ def new_ticket():
             is_public=is_public,
             public_token=_new_public_token() if is_public else None,
             category=cat,
+            tags=tag_objs,
             reporter=current_user,
             created_at=form.created_at.data,
             closed_at=form.closed_at.data,
@@ -260,18 +345,16 @@ def new_ticket():
 
         db.session.add(ticket)
         db.session.flush()
-        if cat is not None:
-            cat.usage_count = (cat.usage_count or 0) + 1
         _log_creation(ticket, current_user)
         db.session.commit()
         flash(_("Ticket saved."), "success")
         return redirect(url_for("tickets.view_ticket", ticket_id=ticket.id))
 
-    categories = Category.query.order_by(Category.display_name).all()
+    all_tags = Tag.query.order_by(Tag.display_name.asc()).all()
     return render_template(
         "tickets/form.html",
         form=form,
-        categories=categories,
+        all_tags=all_tags,
         ticket=None,
         title=_("New ticket"),
     )
@@ -325,15 +408,18 @@ def view_ticket(ticket_id):
 def edit_ticket(ticket_id):
     ticket = Ticket.query.get_or_404(ticket_id)
     form = TicketForm(obj=ticket)
+    _populate_category_field(form)
 
     if request.method == "GET":
-        # `obj=` populates form fields from ticket attrs, but the category
-        # field on the ticket is a Category object; swap in the display name
-        # so the text input renders correctly.
-        form.category.data = ticket.category.display_name if ticket.category else ""
+        # `obj=` doesn't populate non-column attrs cleanly: pre-set the
+        # category dropdown from the ticket's current FK and the tag
+        # input from the comma-joined tag display names.
+        form.category_id.data = ticket.category_id
+        form.tags.data = _format_tags(ticket.tags)
 
     if form.validate_on_submit():
-        new_cat = Category.get_or_create(form.category.data) if form.category.data else None
+        new_cat = Category.query.get(form.category_id.data) or _default_category()
+        new_tags = _parse_tags_input(form.tags.data)
         new_status = form.status.data
         new_closed_at = form.closed_at.data
         # Auto-fill closed_at when transitioning into a terminal status.
@@ -369,13 +455,15 @@ def edit_ticket(ticket_id):
         old_cat_name = ticket.category.display_name if ticket.category else None
         new_cat_name = new_cat.display_name if new_cat else None
         _log_change(ticket, "category", old_cat_name, new_cat_name, current_user)
-
-        # --- Update category usage_count ---------------------------------
-        if ticket.category_id != (new_cat.id if new_cat else None):
-            if ticket.category is not None:
-                ticket.category.usage_count = max(0, (ticket.category.usage_count or 1) - 1)
-            if new_cat is not None:
-                new_cat.usage_count = (new_cat.usage_count or 0) + 1
+        # Log the tag set as a single comma-joined string so the diff
+        # in the audit log reads naturally instead of one row per tag.
+        _log_change(
+            ticket,
+            "tags",
+            _format_tags(ticket.tags) or None,
+            ", ".join(t.display_name for t in new_tags) or None,
+            current_user,
+        )
 
         # --- Apply changes ----------------------------------------------
         ticket.description = new_description
@@ -394,6 +482,7 @@ def edit_ticket(ticket_id):
         elif not now_public:
             ticket.public_token = None
         ticket.category = new_cat
+        ticket.tags = new_tags
         ticket.created_at = form.created_at.data
         ticket.closed_at = new_closed_at
 
@@ -401,11 +490,11 @@ def edit_ticket(ticket_id):
         flash(_("Ticket saved."), "success")
         return redirect(url_for("tickets.view_ticket", ticket_id=ticket.id))
 
-    categories = Category.query.order_by(Category.display_name).all()
+    all_tags = Tag.query.order_by(Tag.display_name.asc()).all()
     return render_template(
         "tickets/form.html",
         form=form,
-        categories=categories,
+        all_tags=all_tags,
         ticket=ticket,
         title=_("Edit"),
     )
@@ -448,10 +537,6 @@ def delete_ticket(ticket_id):
     if not current_user.is_admin:
         abort(403)
     ticket = Ticket.query.get_or_404(ticket_id)
-    # Decrement the category usage counter before the cascade cleans up
-    # the ticket rows.
-    if ticket.category is not None:
-        ticket.category.usage_count = max(0, (ticket.category.usage_count or 1) - 1)
     db.session.delete(ticket)
     db.session.commit()
     flash(_("Ticket removed."), "success")

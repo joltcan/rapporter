@@ -26,6 +26,14 @@
                             <span class="badge bg-light text-dark border">{{ ticket.category.display_name }}</span>
                             {% else %}–{% endif %}
                         </dd>
+                        {% if ticket.tags %}
+                        <dt class="col-sm-4 text-muted">{{ _('Tags') }}</dt>
+                        <dd class="col-sm-8">
+                            {% for tag in ticket.tags %}
+                            <span class="badge bg-secondary-subtle text-secondary-emphasis border me-1 mb-1">{{ tag.display_name }}</span>
+                            {% endfor %}
+                        </dd>
+                        {% endif %}
                         <dt class="col-sm-4 text-muted">{{ _('Status') }}</dt>
                         <dd class="col-sm-8">
                             <span class="badge badge-{{ ticket.status }}">{{ status_label(ticket.status) }}</span>

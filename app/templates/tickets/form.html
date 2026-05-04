@@ -24,16 +24,18 @@
                 <div class="card-body">
                     <div class="row g-3">
                         <div class="col-md-6">
-                            <label class="form-label fw-semibold" for="category">{{ _('Category') }}</label>
-                            {{ form.category(class="form-control" + (" is-invalid" if form.category.errors else ""),
-                               id="category", list="category-list",
-                               placeholder=_('Choose or type a new category'),
-                               autocomplete="off") }}
-                            <datalist id="category-list">
-                                {% for c in categories %}
-                                <option value="{{ c.display_name }}"></option>
+                            <label class="form-label fw-semibold" for="category_id">{{ _('Category') }}</label>
+                            <select name="category_id" id="category_id"
+                                    class="form-select{% if form.category_id.errors %} is-invalid{% endif %}">
+                                {% for value, label in form.category_id.choices %}
+                                <option value="{{ value }}" {% if form.category_id.data == value %}selected{% endif %}>
+                                    {{ label }}
+                                </option>
                                 {% endfor %}
-                            </datalist>
+                            </select>
+                            {% for error in form.category_id.errors %}
+                            <div class="invalid-feedback">{{ _(error) }}</div>
+                            {% endfor %}
                         </div>
                         <div class="col-md-6">
                             <label class="form-label fw-semibold" for="priority">{{ _('Priority') }}</label>
@@ -87,6 +89,28 @@
                                id="note", placeholder=_('Only visible to signed-in users')) }}
                             <div class="form-text small">
                                 {{ _('Only visible to signed-in users — never shown on the public share view.') }}
+                            </div>
+                        </div>
+                        <div class="mb-3">
+                            <label class="form-label fw-semibold" for="tags">
+                                <i class="bi bi-tags me-1"></i>{{ _('Tags') }}
+                            </label>
+                            {{ form.tags(class="form-control" + (" is-invalid" if form.tags.errors else ""),
+                               id="tags",
+                               placeholder=_('Comma-separated, e.g. matlagning, tält'),
+                               autocomplete="off") }}
+                            <div class="form-text small">
+                                {{ _('Free-form labels. Type a new one or pick existing.') }}
+                                {% if all_tags %}
+                                <div class="mt-1">
+                                    {% for t in all_tags %}
+                                    <button type="button" class="btn btn-sm btn-outline-secondary py-0 px-2 mb-1"
+                                            data-tag="{{ t.display_name }}">
+                                        + {{ t.display_name }}
+                                    </button>
+                                    {% endfor %}
+                                </div>
+                                {% endif %}
                             </div>
                         </div>
                         <div class="row g-3">
@@ -167,4 +191,23 @@
         </div>
     </div>
 </form>
+
+<script>
+(function () {
+    // Click-to-add for tag suggestions: appends the tag to the input,
+    // de-duped, comma-separated. Mirrors how the server normalises so
+    // the visible state matches what gets saved.
+    const input = document.getElementById('tags');
+    if (!input) return;
+    document.querySelectorAll('button[data-tag]').forEach(btn => {
+        btn.addEventListener('click', () => {
+            const name = btn.dataset.tag;
+            const current = input.value.split(',').map(s => s.trim()).filter(Boolean);
+            if (current.some(s => s.toLowerCase() === name.toLowerCase())) return;
+            current.push(name);
+            input.value = current.join(', ');
+        });
+    });
+})();
+</script>
 {% endblock %}

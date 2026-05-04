@@ -128,6 +128,9 @@
                 {% if t.category %}
                 <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
                 {% endif %}
+                {% for tag in t.tags %}
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ tag.display_name }}</span>
+                {% endfor %}
                 <span class="ticket-meta ms-auto">
                     {{ t.created_at.astimezone().strftime('%Y-%m-%d %H:%M') if t.created_at }}
                     &middot;
@@ -157,6 +160,9 @@
                 {% if t.category %}
                 <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
                 {% endif %}
+                {% for tag in t.tags %}
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ tag.display_name }}</span>
+                {% endfor %}
                 <span class="ticket-meta ms-auto">
                     {{ t.created_at.astimezone().strftime('%H:%M') if t.created_at }}
                     &middot;
@@ -192,6 +198,9 @@
                 {% if t.category %}
                 <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
                 {% endif %}
+                {% for tag in t.tags %}
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ tag.display_name }}</span>
+                {% endfor %}
             </div>
             <div class="ticket-body small text-muted mb-1">{{ (t.description or '')|truncate(160, True) }}</div>
             <ul class="event-list">
@@ -231,6 +240,9 @@
                 {% if t.category %}
                 <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
                 {% endif %}
+                {% for tag in t.tags %}
+                <span class="badge bg-secondary-subtle text-secondary-emphasis border">{{ tag.display_name }}</span>
+                {% endfor %}
                 <span class="ticket-meta ms-auto">
                     {{ _('Closed') }}: {{ t.closed_at.astimezone().strftime('%Y-%m-%d %H:%M') if t.closed_at }}
                 </span>

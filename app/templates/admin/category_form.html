@@ -23,11 +23,11 @@
                 {% for error in form.name.errors %}
                 <div class="invalid-feedback">{{ _(error) }}</div>
                 {% endfor %}
-                {% if category.usage_count > 0 %}
-                <div class="form-text">
-                    {{ _('Renaming will update all %(n)s tickets that use this category.', n=category.usage_count) }}
-                </div>
-                {% endif %}
+            </div>
+            <div class="mb-3">
+                <label class="form-label fw-semibold" for="cat_sort">{{ _('Sort order') }}</label>
+                {{ form.sort_order(class="form-control", id="cat_sort", inputmode="numeric") }}
+                <div class="form-text small">{{ _('Lower numbers come first.') }}</div>
             </div>
             <button type="submit" class="btn btn-scout">{{ _('Save') }}</button>
             <a href="{{ url_for('admin.categories') }}" class="btn btn-link">{{ _('Cancel') }}</a>
