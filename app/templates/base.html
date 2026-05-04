@@ -306,6 +306,12 @@
                     </a>
                 </li>
                 <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'tickets.morning_report' %}active{% endif %}"
+                       href="{{ url_for('tickets.morning_report') }}" title="{{ _('Morning report') }}">
+                        <i class="bi bi-newspaper"></i><span class="label">{{ _('Morning report') }}</span>
+                    </a>
+                </li>
+                <li class="nav-item">
                     <a class="nav-link" href="{{ url_for('tickets.tv_dashboard') }}"
                        target="_blank" title="{{ _('TV dashboard') }}">
                         <i class="bi bi-tv"></i><span class="label">{{ _('TV dashboard') }}</span>

@@ -1,0 +1,248 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Morning report') }}{% endblock %}
+
+{% block extra_head %}
+<style>
+    .report-section { margin-bottom: 1.75rem; }
+    .report-section h2 {
+        font-size: 1.15rem;
+        font-weight: 700;
+        border-bottom: 2px solid var(--scout-blue);
+        padding-bottom: 0.35rem;
+        margin-bottom: 0.75rem;
+        color: var(--scout-blue);
+    }
+    .ticket-line {
+        padding: 0.5rem 0;
+        border-bottom: 1px dotted #d0d0d0;
+    }
+    .ticket-line:last-child { border-bottom: none; }
+    .ticket-line .ticket-meta { font-size: 0.85rem; color: #6c757d; }
+    .ticket-line .ticket-body { white-space: pre-wrap; }
+    .event-list { list-style: none; padding-left: 0; margin-bottom: 0; }
+    .event-list li { padding: 0.15rem 0; font-size: 0.9rem; }
+    .event-field { font-family: monospace; color: #495057; }
+    .kpi-row .kpi {
+        background: #fff;
+        border: 1px solid #e5e7eb;
+        border-radius: 0.5rem;
+        padding: 0.75rem 1rem;
+        text-align: center;
+        flex: 1 1 0;
+        min-width: 0;
+    }
+    .kpi .num { font-size: 1.8rem; font-weight: 700; color: var(--scout-blue); line-height: 1.1; }
+    .kpi .label { font-size: 0.8rem; color: #6c757d; }
+    @media print {
+        .report-section h2 { color: #000; border-bottom-color: #000; }
+        .ticket-line { page-break-inside: avoid; }
+    }
+</style>
+{% endblock %}
+
+{% block content %}
+<div class="d-flex align-items-center mb-3 flex-wrap gap-2">
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-newspaper me-2 text-scout"></i>{{ _('Morning report') }}
+    </h1>
+    <div class="ms-auto">
+        <button onclick="window.print()" class="btn btn-outline-secondary btn-sm">
+            <i class="bi bi-printer me-1"></i>{{ _('Print') }}
+        </button>
+    </div>
+</div>
+
+<div class="text-muted small mb-3">
+    {{ _('Window') }}:
+    <strong>{{ start.astimezone().strftime('%Y-%m-%d %H:%M') }}</strong>
+    →
+    <strong>{{ end.astimezone().strftime('%Y-%m-%d %H:%M') }}</strong>
+    &middot;
+    {{ _('Generated') }} {{ generated_at.astimezone().strftime('%Y-%m-%d %H:%M') }}
+    {% if current_user.is_authenticated %}
+    {{ _('by') }} <strong>{{ current_user.username }}</strong>
+    {% endif %}
+</div>
+
+<!-- Window picker -->
+<div class="card mb-4 no-print">
+    <div class="card-body">
+        <form method="GET" class="row g-2 align-items-end">
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">{{ _('From') }}</label>
+                <input type="datetime-local" name="from" value="{{ from_input }}"
+                       class="form-control form-control-sm">
+            </div>
+            <div class="col-md-4">
+                <label class="form-label small text-muted mb-1">{{ _('To') }}</label>
+                <input type="datetime-local" name="to" value="{{ to_input }}"
+                       class="form-control form-control-sm">
+            </div>
+            <div class="col-md-4 d-flex gap-1">
+                <button type="submit" class="btn btn-sm btn-scout">
+                    <i class="bi bi-arrow-clockwise me-1"></i>{{ _('Update') }}
+                </button>
+                <a href="{{ url_for('tickets.morning_report') }}" class="btn btn-sm btn-outline-secondary">
+                    {{ _('Reset to default') }}
+                </a>
+            </div>
+        </form>
+    </div>
+</div>
+
+<!-- KPIs -->
+<div class="report-section">
+    <div class="d-flex gap-2 kpi-row flex-wrap">
+        <div class="kpi">
+            <div class="num">{{ new_in_window|length }}</div>
+            <div class="label">{{ _('New in window') }}</div>
+        </div>
+        <div class="kpi">
+            <div class="num">{{ closed_in_window|length }}</div>
+            <div class="label">{{ _('Closed in window') }}</div>
+        </div>
+        <div class="kpi">
+            <div class="num">{{ events_by_ticket|length }}</div>
+            <div class="label">{{ _('Tickets with changes') }}</div>
+        </div>
+        <div class="kpi">
+            <div class="num">{{ open_critical|length }}</div>
+            <div class="label">{{ _('Open P1 + P2') }}</div>
+        </div>
+    </div>
+</div>
+
+<!-- Open critical (independent of window) -->
+<div class="report-section">
+    <h2><i class="bi bi-exclamation-triangle me-2"></i>{{ _('Open priority items') }}</h2>
+    {% if open_critical %}
+        {% for t in open_critical %}
+        <div class="ticket-line">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}" class="text-decoration-none">
+                    <strong>#{{ t.id }}</strong>
+                </a>
+                <span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span>
+                <span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span>
+                {% if t.category %}
+                <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
+                {% endif %}
+                <span class="ticket-meta ms-auto">
+                    {{ t.created_at.astimezone().strftime('%Y-%m-%d %H:%M') if t.created_at }}
+                    &middot;
+                    {{ t.reporter.username if t.reporter else '—' }}
+                </span>
+            </div>
+            <div class="ticket-body">{{ t.description }}</div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted mb-0">{{ _('None.') }}</p>
+    {% endif %}
+</div>
+
+<!-- New in window -->
+<div class="report-section">
+    <h2><i class="bi bi-plus-circle me-2"></i>{{ _('New tickets in window') }}</h2>
+    {% if new_in_window %}
+        {% for t in new_in_window %}
+        <div class="ticket-line">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}" class="text-decoration-none">
+                    <strong>#{{ t.id }}</strong>
+                </a>
+                <span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span>
+                <span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span>
+                {% if t.category %}
+                <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
+                {% endif %}
+                <span class="ticket-meta ms-auto">
+                    {{ t.created_at.astimezone().strftime('%H:%M') if t.created_at }}
+                    &middot;
+                    {{ t.reporter.username if t.reporter else '—' }}
+                </span>
+            </div>
+            <div class="ticket-body">{{ t.description }}</div>
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted mb-0">{{ _('None.') }}</p>
+    {% endif %}
+</div>
+
+<!-- Events in window (excluding new tickets, which are above) -->
+<div class="report-section">
+    <h2><i class="bi bi-pencil-square me-2"></i>{{ _('Events in window') }}</h2>
+    {% set non_new_events = [] %}
+    {% for tid, evs in events_by_ticket.items() if tid not in new_ids %}
+        {% set _ = non_new_events.append((tid, evs)) %}
+    {% endfor %}
+    {% if non_new_events %}
+        {% for tid, evs in non_new_events %}
+        {% set t = ticket_map.get(tid) %}
+        {% if t %}
+        <div class="ticket-line">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}" class="text-decoration-none">
+                    <strong>#{{ t.id }}</strong>
+                </a>
+                <span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span>
+                <span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span>
+                {% if t.category %}
+                <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
+                {% endif %}
+            </div>
+            <div class="ticket-body small text-muted mb-1">{{ (t.description or '')|truncate(160, True) }}</div>
+            <ul class="event-list">
+                {% for ev in evs %}
+                <li>
+                    <span class="text-muted">{{ ev.changed_at.astimezone().strftime('%H:%M') }}</span>
+                    &middot;
+                    <strong>{{ ev.user.username if ev.user else '—' }}</strong>
+                    {{ _('changed') }}
+                    <span class="event-field">{{ ev.field }}</span>:
+                    <em>{{ ev.old_value if ev.old_value is not none else _('(empty)') }}</em>
+                    →
+                    <em>{{ ev.new_value if ev.new_value is not none else _('(empty)') }}</em>
+                </li>
+                {% endfor %}
+            </ul>
+        </div>
+        {% endif %}
+        {% endfor %}
+    {% else %}
+        <p class="text-muted mb-0">{{ _('None.') }}</p>
+    {% endif %}
+</div>
+
+<!-- Closed in window -->
+<div class="report-section">
+    <h2><i class="bi bi-check2-circle me-2"></i>{{ _('Closed in window') }}</h2>
+    {% if closed_in_window %}
+        {% for t in closed_in_window %}
+        <div class="ticket-line">
+            <div class="d-flex align-items-center gap-2 mb-1">
+                <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}" class="text-decoration-none">
+                    <strong>#{{ t.id }}</strong>
+                </a>
+                <span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span>
+                <span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span>
+                {% if t.category %}
+                <span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>
+                {% endif %}
+                <span class="ticket-meta ms-auto">
+                    {{ _('Closed') }}: {{ t.closed_at.astimezone().strftime('%Y-%m-%d %H:%M') if t.closed_at }}
+                </span>
+            </div>
+            <div class="ticket-body">{{ t.description }}</div>
+            {% if t.feedback %}
+            <div class="small text-muted mt-1"><i class="bi bi-reply me-1"></i>{{ t.feedback }}</div>
+            {% endif %}
+        </div>
+        {% endfor %}
+    {% else %}
+        <p class="text-muted mb-0">{{ _('None.') }}</p>
+    {% endif %}
+</div>
+{% endblock %}

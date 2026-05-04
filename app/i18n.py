@@ -198,6 +198,25 @@ TRANSLATIONS = {
         "Live ticket board": "Live-tavla",
         "Updated %(time)s": "Uppdaterad %(time)s",
 
+        # --- Morning report ---
+        "Morning report": "Morgonrapport",
+        "Window": "Tidsfönster",
+        "Generated": "Skapad",
+        "by": "av",
+        "From": "Från",
+        "To": "Till",
+        "Update": "Uppdatera",
+        "Reset to default": "Återställ till standard",
+        "New in window": "Nya i fönstret",
+        "Closed in window": "Avslutade i fönstret",
+        "Tickets with changes": "Ärenden med ändringar",
+        "Open P1 + P2": "Öppna P1 + P2",
+        "Open priority items": "Öppna prioriterade ärenden",
+        "New tickets in window": "Nya ärenden i fönstret",
+        "Events in window": "Händelser i fönstret",
+        "None.": "Inga.",
+        "Print": "Skriv ut",
+
         # --- Validation ---
         "Enter a username.": "Ange ett användarnamn.",
         "Enter a password.": "Ange ett lösenord.",

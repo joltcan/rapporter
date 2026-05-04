@@ -11,7 +11,8 @@ Access rules:
 import io
 import base64
 import hmac
-from datetime import datetime, timezone
+from collections import OrderedDict
+from datetime import datetime, timezone, timedelta
 from functools import wraps
 
 import qrcode
@@ -506,6 +507,132 @@ def ticket_qr_png(ticket_id):
 # Shows only ticket id, status, created/closed times, priority and title
 # (if a title is set). No description, no category.
 # ---------------------------------------------------------------------------
+
+# ---------------------------------------------------------------------------
+# Morning report -- "what happened in the last 24 hours" view used at the
+# daily morning briefing. Defaults to a window from yesterday 08:00 local to
+# today 08:00 local (or, before 08:00, day-before-yesterday 08:00 to
+# yesterday 08:00). Both ends are user-overridable via query params.
+# ---------------------------------------------------------------------------
+
+def _default_window():
+    """(start_utc, end_utc) for the most recent 08:00→08:00 window.
+
+    All times in this module's storage are timezone-aware UTC; the morning
+    report's "08:00" rotation is interpreted in the server's local timezone
+    so the window matches when the camp staff are actually awake.
+    """
+    now_local = datetime.now().astimezone()
+    today_8am = now_local.replace(hour=8, minute=0, second=0, microsecond=0)
+    end_local = today_8am if now_local >= today_8am else today_8am - timedelta(days=1)
+    start_local = end_local - timedelta(days=1)
+    return (
+        start_local.astimezone(timezone.utc),
+        end_local.astimezone(timezone.utc),
+    )
+
+
+def _parse_local_to_utc(s):
+    """Parse '2026-05-04T08:00' as local time, return tz-aware UTC. None on failure."""
+    if not s:
+        return None
+    try:
+        naive = datetime.strptime(s, "%Y-%m-%dT%H:%M")
+    except ValueError:
+        return None
+    # Naive datetime + .astimezone() → local-aware; then convert to UTC.
+    return naive.astimezone().astimezone(timezone.utc)
+
+
+def _utc_to_local_input(dt):
+    """tz-aware UTC datetime → 'YYYY-MM-DDTHH:MM' local string for datetime-local input."""
+    if dt is None:
+        return ""
+    return dt.astimezone().strftime("%Y-%m-%dT%H:%M")
+
+
+@tickets_bp.route("/morgonrapport")
+@login_required
+def morning_report():
+    default_start, default_end = _default_window()
+    start = _parse_local_to_utc(request.args.get("from")) or default_start
+    end = _parse_local_to_utc(request.args.get("to")) or default_end
+    if end <= start:
+        # Guard against an inverted manual window. Fall back to defaults
+        # rather than rendering an empty report.
+        start, end = default_start, default_end
+
+    # 1. Tickets created in window.
+    new_in_window = (
+        Ticket.query
+        .filter(Ticket.created_at >= start, Ticket.created_at < end)
+        .order_by(Ticket.priority.asc(), Ticket.created_at.asc())
+        .all()
+    )
+    new_ids = {t.id for t in new_in_window}
+
+    # 2. Tickets closed in window. closed_at is set when status enters a
+    # terminal state, and re-cleared on reopen, so this gives us the right
+    # "actually finished today" set without joining the history table.
+    closed_in_window = (
+        Ticket.query
+        .filter(Ticket.closed_at >= start, Ticket.closed_at < end)
+        .order_by(Ticket.closed_at.asc())
+        .all()
+    )
+
+    # 3. History events in window, grouped by ticket. Skip the synthetic
+    # __created__ rows since "new" tickets already get their own section.
+    events = (
+        TicketHistory.query
+        .filter(TicketHistory.changed_at >= start, TicketHistory.changed_at < end)
+        .filter(TicketHistory.field != "__created__")
+        .order_by(TicketHistory.changed_at.asc())
+        .all()
+    )
+    events_by_ticket = OrderedDict()
+    for ev in events:
+        # Hide bookkeeping noise from the morning briefing -- updated_at
+        # changes constantly and add no signal.
+        if ev.field in ("updated_at",):
+            continue
+        events_by_ticket.setdefault(ev.ticket_id, []).append(ev)
+
+    # Build a parallel ticket map so the template can show ticket meta with
+    # each event group without a per-row query.
+    ticket_ids = list(events_by_ticket.keys())
+    ticket_map = {}
+    if ticket_ids:
+        for t in Ticket.query.filter(Ticket.id.in_(ticket_ids)).all():
+            ticket_map[t.id] = t
+
+    # 4. Currently-open critical/important tickets. Independent of the
+    # window: these need attention at the briefing regardless of when they
+    # were filed. Excludes anything closed during the window so we don't
+    # double-list a ticket that already shows up under "closed".
+    open_critical = (
+        Ticket.query
+        .filter(Ticket.status.in_(OPEN_STATUSES))
+        .filter(Ticket.priority.in_((1, 2)))
+        .order_by(Ticket.priority.asc(), Ticket.created_at.asc())
+        .all()
+    )
+
+    return render_template(
+        "tickets/morning_report.html",
+        start=start,
+        end=end,
+        from_input=_utc_to_local_input(start),
+        to_input=_utc_to_local_input(end),
+        new_in_window=new_in_window,
+        closed_in_window=closed_in_window,
+        events_by_ticket=events_by_ticket,
+        ticket_map=ticket_map,
+        new_ids=new_ids,
+        open_critical=open_critical,
+        generated_at=datetime.now(timezone.utc),
+    )
+
 
 @tickets_bp.route("/tv")
 def tv_dashboard():
