@@ -13,14 +13,15 @@ from flask import (
 )
 from flask_login import login_required, current_user
 from flask_wtf import FlaskForm
-from wtforms import StringField, PasswordField, SelectField, SubmitField
+from wtforms import StringField, PasswordField, SelectField, SubmitField, BooleanField
 from wtforms.validators import DataRequired, Length, Optional, Regexp, ValidationError
 from wtforms.widgets import PasswordInput
 
 from app.admin import admin_bp
 from app.models import (
-    User, Category, Tag, Ticket, UserAuditLog,
+    User, Category, Tag, Ticket, UserAuditLog, SystemSetting,
     DEFAULT_CATEGORY_SLUG,
+    SETTING_TV_SHOW_DESCRIPTION, SETTING_MORNING_REPORT_HOUR,
     ROLES, ROLE_ADMIN, ROLE_EDITOR, ROLE_VIEWER,
     STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_CLOSED, STATUS_PAUSED, STATUS_REJECTED,
     PRIORITIES, PRIORITY_P1, PRIORITY_P2, PRIORITY_P3,
@@ -150,6 +151,23 @@ class TagForm(FlaskForm):
     name = StringField(
         "Tag name",
         validators=[DataRequired(), Length(min=1, max=80)],
+    )
+    submit = SubmitField("Save")
+
+
+class SettingsForm(FlaskForm):
+    """One form per settings page section. Add fields here as new
+    runtime settings are introduced; the route reads each value back
+    out and writes it via SystemSetting.set."""
+    tv_show_description = BooleanField("Show ticket description on TV")
+    morning_report_hour = StringField(
+        "Morning report rotation hour (HH:MM)",
+        validators=[
+            DataRequired(),
+            # 24-hour HH:MM. The route also re-validates by trying to
+            # parse the time, so this is just a fast-path UI check.
+            Regexp(r"^[0-2]?\d:[0-5]\d$", message="Use HH:MM, e.g. 08:00"),
+        ],
     )
     submit = SubmitField("Save")
 
@@ -551,6 +569,52 @@ def delete_tag(tag_id):
         db.session.commit()
         flash(_("Tag removed."), "success")
     return redirect(url_for("admin.tags"))
+
+
+# ---------------------------------------------------------------------------
+# System settings -- runtime knobs configurable without redeploying.
+# ---------------------------------------------------------------------------
+
+def _parse_hour_minute(s):
+    """Validate 'HH:MM' and return it normalised to two digits per
+    side, or None if invalid. The form validator also catches the
+    obvious case but this is the source of truth before persisting."""
+    try:
+        from datetime import datetime as _dt
+        t = _dt.strptime(s.strip(), "%H:%M").time()
+    except (ValueError, AttributeError):
+        return None
+    return f"{t.hour:02d}:{t.minute:02d}"
+
+
+@admin_bp.route("/settings", methods=["GET", "POST"])
+@login_required
+@admin_required
+def settings():
+    form = SettingsForm()
+    if request.method == "GET":
+        form.tv_show_description.data = SystemSetting.get_bool(
+            SETTING_TV_SHOW_DESCRIPTION, default=True
+        )
+        form.morning_report_hour.data = SystemSetting.get(
+            SETTING_MORNING_REPORT_HOUR, default="08:00"
+        )
+
+    if form.validate_on_submit():
+        normalised_hour = _parse_hour_minute(form.morning_report_hour.data)
+        if normalised_hour is None:
+            flash(_("Use HH:MM, e.g. 08:00"), "danger")
+        else:
+            SystemSetting.set(
+                SETTING_TV_SHOW_DESCRIPTION,
+                bool(form.tv_show_description.data),
+            )
+            SystemSetting.set(SETTING_MORNING_REPORT_HOUR, normalised_hour)
+            db.session.commit()
+            flash(_("Settings saved."), "success")
+            return redirect(url_for("admin.settings"))
+
+    return render_template("admin/settings.html", form=form)
 
 
 # ---------------------------------------------------------------------------

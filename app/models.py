@@ -295,6 +295,66 @@ class UserAuditLog(db.Model):
         return f"<UserAuditLog user={self.user_id} {self.field}>"
 
 
+class SystemSetting(db.Model):
+    """Singleton key/value store for admin-configurable runtime settings.
+    Each row is one setting. Values are stored as text; helpers below
+    coerce to bool / time so callers don't sprinkle parsing everywhere.
+
+    Used for things that may change at any time and shouldn't require a
+    container restart (TV display mode, morning-report rotation hour,
+    etc.). Not for per-user preferences -- those belong on User.
+    """
+    __tablename__ = "system_settings"
+
+    key = db.Column(db.String(80), primary_key=True)
+    value = db.Column(db.Text, nullable=False)
+    updated_at = db.Column(
+        db.DateTime(timezone=True),
+        nullable=False,
+        default=_now_utc,
+        onupdate=_now_utc,
+    )
+
+    def __repr__(self):
+        return f"<SystemSetting {self.key}={self.value!r}>"
+
+    @classmethod
+    def get(cls, key, default=None):
+        row = cls.query.get(key)
+        return row.value if row else default
+
+    @classmethod
+    def get_bool(cls, key, default=False):
+        v = cls.get(key)
+        if v is None:
+            return default
+        return v.strip().lower() in ("true", "1", "yes", "on")
+
+    @classmethod
+    def set(cls, key, value):
+        """Upsert. Caller is responsible for committing."""
+        if isinstance(value, bool):
+            value = "true" if value else "false"
+        row = cls.query.get(key)
+        if row is None:
+            row = cls(key=key, value=str(value))
+            db.session.add(row)
+        else:
+            row.value = str(value)
+        return row
+
+
+# Setting key constants -- defined here so model + routes + migrations
+# all reference the same strings. Defaults live alongside.
+SETTING_TV_SHOW_DESCRIPTION = "tv_show_description"
+SETTING_MORNING_REPORT_HOUR = "morning_report_hour"
+
+SETTING_DEFAULTS = {
+    SETTING_TV_SHOW_DESCRIPTION: "true",
+    SETTING_MORNING_REPORT_HOUR: "08:00",
+}
+
+
 class TicketHistory(db.Model):
     """Audit log for ticket changes. A single row represents one field
     changing on one ticket at one moment. Batched edits produce several

@@ -1,0 +1,53 @@
+{% extends "base.html" %}
+
+{% block title %}{{ _('Settings') }}{% endblock %}
+
+{% block content %}
+<div class="d-flex justify-content-between align-items-center mb-4">
+    <h1 class="h3 mb-0 fw-bold">
+        <i class="bi bi-sliders me-2 text-scout"></i>{{ _('Settings') }}
+    </h1>
+</div>
+
+<p class="text-muted small">
+    {{ _('Runtime settings — applied immediately, no restart needed.') }}
+</p>
+
+<form method="POST" novalidate>
+    {{ form.hidden_tag() }}
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-tv me-2"></i>{{ _('TV dashboard') }}</div>
+        <div class="card-body">
+            <div class="form-check form-switch mb-2">
+                {{ form.tv_show_description(class="form-check-input", id="tv_show_description") }}
+                <label class="form-check-label fw-semibold" for="tv_show_description">
+                    {{ _('Show ticket description on TV') }}
+                </label>
+            </div>
+            <div class="form-text small">
+                {{ _('When off, the TV cards show only category and tags. The internal note is never shown either way.') }}
+            </div>
+        </div>
+    </div>
+
+    <div class="card mb-3">
+        <div class="card-header"><i class="bi bi-newspaper me-2"></i>{{ _('Morning report') }}</div>
+        <div class="card-body">
+            <label class="form-label fw-semibold" for="morning_report_hour">
+                {{ _('Default rotation hour') }}
+            </label>
+            {{ form.morning_report_hour(class="form-control" + (" is-invalid" if form.morning_report_hour.errors else ""),
+               id="morning_report_hour", placeholder="08:00", style="max-width: 8rem;") }}
+            {% for error in form.morning_report_hour.errors %}
+            <div class="invalid-feedback">{{ _(error) }}</div>
+            {% endfor %}
+            <div class="form-text small">
+                {{ _('The morning report\'s default window runs from this hour yesterday to this hour today (local time). Users can still override per-visit via the date pickers.') }}
+            </div>
+        </div>
+    </div>
+
+    <button type="submit" class="btn btn-scout">{{ _('Save') }}</button>
+</form>
+{% endblock %}

@@ -30,8 +30,9 @@ from wtforms.validators import DataRequired, Optional, Length, NumberRange
 
 from app.tickets import tickets_bp
 from app.models import (
-    Ticket, Category, Tag, TicketHistory, User,
+    Ticket, Category, Tag, TicketHistory, User, SystemSetting,
     DEFAULT_CATEGORY_SLUG,
+    SETTING_TV_SHOW_DESCRIPTION, SETTING_MORNING_REPORT_HOUR,
     STATUSES, STATUS_NEW, STATUS_STARTED, STATUS_PAUSED, STATUS_CLOSED, STATUS_REJECTED,
     TERMINAL_STATUSES,
     PRIORITIES, PRIORITY_P3,
@@ -624,15 +625,32 @@ def ticket_qr_png(ticket_id):
 # ---------------------------------------------------------------------------
 
 def _default_window():
-    """(start_utc, end_utc) for the most recent 08:00→08:00 window.
+    """(start_utc, end_utc) for the most recent rotation→rotation window.
 
-    All times in this module's storage are timezone-aware UTC; the morning
-    report's "08:00" rotation is interpreted in the server's local timezone
-    so the window matches when the camp staff are actually awake.
+    The rotation hour comes from the SETTING_MORNING_REPORT_HOUR setting
+    (admin-configurable, default 08:00). All storage is timezone-aware
+    UTC; the rotation is interpreted in the server's local timezone so
+    the window matches when the camp staff are actually awake.
     """
+    raw = SystemSetting.get(SETTING_MORNING_REPORT_HOUR, default="08:00")
+    try:
+        hh, mm = raw.split(":", 1)
+        hour, minute = int(hh), int(mm)
+        if not (0 <= hour < 24 and 0 <= minute < 60):
+            raise ValueError
+    except (ValueError, AttributeError):
+        # Defensive: a malformed setting falls back to 08:00 rather
+        # than 500ing the report.
+        hour, minute = 8, 0
     now_local = datetime.now().astimezone()
-    today_8am = now_local.replace(hour=8, minute=0, second=0, microsecond=0)
-    end_local = today_8am if now_local >= today_8am else today_8am - timedelta(days=1)
+    today_rotation = now_local.replace(
+        hour=hour, minute=minute, second=0, microsecond=0
+    )
+    end_local = (
+        today_rotation
+        if now_local >= today_rotation
+        else today_rotation - timedelta(days=1)
+    )
     start_local = end_local - timedelta(days=1)
     return (
         start_local.astimezone(timezone.utc),
@@ -756,10 +774,17 @@ def tv_dashboard():
             .limit(25)
             .all()
         )
+    # Display mode is admin-controlled (so a passer-by can't toggle
+    # what's visible on a board projected to bystanders). The internal
+    # note is never shown in either mode.
+    show_description = SystemSetting.get_bool(
+        SETTING_TV_SHOW_DESCRIPTION, default=True
+    )
     return render_template(
         "tickets/tv.html",
         columns=columns,
         visible_statuses=visible,
+        show_description=show_description,
     )
 
 

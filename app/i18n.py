@@ -231,6 +231,19 @@ TRANSLATIONS = {
         "Live ticket board": "Live-tavla",
         "Updated %(time)s": "Uppdaterad %(time)s",
 
+        # --- Settings ---
+        "Settings": "Inställningar",
+        "Settings saved.": "Inställningar sparade.",
+        "Runtime settings — applied immediately, no restart needed.":
+            "Körtidsinställningar — träder i kraft direkt, ingen omstart behövs.",
+        "Show ticket description on TV": "Visa ärendebeskrivning på TV",
+        "When off, the TV cards show only category and tags. The internal note is never shown either way.":
+            "När av visar TV-korten bara kategori och taggar. Anteckningar (intern) visas aldrig oavsett.",
+        "Default rotation hour": "Standardtid för rotation",
+        "The morning report's default window runs from this hour yesterday to this hour today (local time). Users can still override per-visit via the date pickers.":
+            "Morgonrapportens standardfönster går från den här tiden igår till samma tid idag (lokal tid). Användare kan ändå byta tidsfönster vid varje besök via datumväljarna.",
+        "Use HH:MM, e.g. 08:00": "Använd HH:MM, t.ex. 08:00",
+
         # --- Morning report ---
         "Morning report": "Morgonrapport",
         "Window": "Tidsfönster",

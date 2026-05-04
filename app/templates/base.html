@@ -337,6 +337,12 @@
                         <i class="bi bi-tags"></i><span class="label">{{ _('Tags') }}</span>
                     </a>
                 </li>
+                <li class="nav-item">
+                    <a class="nav-link {% if request.endpoint == 'admin.settings' %}active{% endif %}"
+                       href="{{ url_for('admin.settings') }}" title="{{ _('Settings') }}">
+                        <i class="bi bi-sliders"></i><span class="label">{{ _('Settings') }}</span>
+                    </a>
+                </li>
                 {% endif %}
             </ul>
             <button type="button" id="sidebarToggle" class="app-sidebar-toggle"
