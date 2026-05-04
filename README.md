@@ -43,7 +43,17 @@ då körs appen i debug-läge på http://localhost:8000 och Caddy hoppas över.
 
 ## Morgonrapport
 
-`/tickets/morgonrapport` visar nya, ändrade och avslutade ärenden i ett valbart tidsfönster (default föregående 08:00 → idag 08:00 lokal tid). Tänkt att projiceras eller skrivas ut inför morgonmöten.
+`/tickets/morgonrapport` visar nya, ändrade och avslutade ärenden i ett valbart tidsfönster (default föregående rotationstimme → samma idag, lokal tid). KPI-rutorna på toppen är klickbara och tar dig till motsvarande filtrerad ärendelista. Tänkt att projiceras eller skrivas ut inför morgonmöten.
+
+## TV-skärm
+
+`/tickets/tv` visar öppna ärenden i tre kolumner (Ny / Påbörjad / Avslutad). Korten kan visa antingen beskrivning (default) eller bara kategori + taggar — admin styr läget via Inställningar så förbipasserande inte kan ändra vad som projiceras. Anteckning (intern) visas aldrig.
+
+## Inställningar
+
+`/admin/settings` (admin) har körtidsknappar för:
+- om TV-skärmen ska visa beskrivning eller bara kategori/taggar
+- vilken timme på dygnet morgonrapportens default-fönster ska rotera
 
 ## Utveckling
 

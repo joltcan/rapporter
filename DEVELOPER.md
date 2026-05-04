@@ -58,19 +58,22 @@ labelled `lluw`.
 ```
 app/
 ├── __init__.py          # App factory, extensions, CLI commands
-├── models.py            # SQLAlchemy models: User, Category, Ticket, TicketHistory
+├── models.py            # SQLAlchemy models: User, Category, Tag, Ticket,
+│                        #   TicketHistory, UserAuditLog, SystemSetting
 ├── i18n.py              # Two-language dict-based translations (sv/en)
 ├── wordlist.py          # Swedish words used as public-share tokens
 ├── auth/routes.py       # /login, /logout
-├── tickets/routes.py    # /tickets/* — list, create, view, edit, advance,
-│                        #   public share, QR, TV dashboard
-├── admin/routes.py      # /admin/* — dashboard, users, categories
+├── tickets/routes.py    # /tickets/* — list (with time-range filter),
+│                        #   create, view, edit, advance, public share,
+│                        #   QR, TV dashboard, morning report
+├── admin/routes.py      # /admin/* — dashboard, users, categories,
+│                        #   tags, settings
 ├── static/              # Static assets (served directly by the web container)
 └── templates/
     ├── base.html
     ├── auth/, tickets/, admin/
 
-migrations/versions/     # Alembic migrations (0001 initial, 0002 public_token)
+migrations/versions/     # Alembic migrations
 Dockerfile
 docker-compose.yml           # Base stack (db, web, caddy under prod profile)
 docker-compose.override.yml  # Dev overrides (auto-applied)
@@ -84,8 +87,8 @@ Caddyfile
 | Blueprint | URL prefix | Access |
 |---|---|---|
 | `auth` | `/` | Everyone |
-| `tickets` | `/tickets` | Logged-in users; `/tickets/p/<id>/<token>` is public |
-| `admin` | `/admin` | Dashboard open to admin + editor; user/category mgmt admin-only |
+| `tickets` | `/tickets` | Logged-in users; `/tickets/p/<id>/<token>` and `/tickets/tv` are public |
+| `admin` | `/admin` | Dashboard open to admin + editor; users / categories / tags / settings admin-only |
 
 The root route `/` redirects to `/tickets/`.
 
@@ -105,17 +108,28 @@ role checks.
 
 ### Category
 
-Normalised (lowercased, trimmed) unique `name`, plus a `display_name`
-preserving the original casing. `usage_count` is maintained by the ticket
-routes so unused categories can be safely removed.
+Top-level grouping (Säkerhet, Miljö, Hälsa, Väder, Övrigt by default).
+Normalised lowercase `name` (slug), `display_name` for rendering,
+`sort_order` for explicit ordering in dropdowns. Admin-managed; the
+`ovrigt` slug is the seeded default and can't be deleted because new
+tickets fall back to it.
+
+### Tag
+
+Free-form labels editors create on the fly when filing tickets. Same
+`name` / `display_name` shape as Category. Many-to-many with Ticket
+(`ticket_tags`) and with Category (`tag_categories`); admins curate
+tag-category links via `/admin/tags`.
 
 ### Ticket
 
 ```python
-id, title, description, feedback, priority (1..3), status,
+id, title, description, feedback, note, priority (1..3), status,
 category_id, reporter_id, is_public, public_token,
 created_at, db_created_at, updated_at, closed_at
 ```
+
+Plus a many-to-many `tags` relationship via `ticket_tags`.
 
 **Statuses** (stored as ASCII slugs, labels resolved via i18n):
 `ny`, `paborjad`, `avslutad`, `pausad`, `avvisad`
@@ -123,13 +137,24 @@ created_at, db_created_at, updated_at, closed_at
 **Priorities:** `1` = P1 critical, `2` = P2 important, `3` = P3 low
 
 `created_at` is user-editable (for backdating); `db_created_at` records
-the immutable row-insertion moment.
+the immutable row-insertion moment. `category_id` is NOT NULL — every
+ticket has a category, defaulting to "Övrigt".
 
 ### TicketHistory
 
 One row per changed field. `field='__created__'` marks the creation
 event. The edit/advance routes call `_log_change` per field to build the
-audit trail.
+audit trail. Tag-set changes are logged as a single comma-joined value
+on the synthetic `tags` field.
+
+### SystemSetting
+
+Singleton key/value store for runtime-configurable knobs (TV display
+mode, morning-report rotation hour, etc.). Helpers
+`SystemSetting.get(key, default)`, `.get_bool(key, default)`, and
+`.set(key, value)` cover the common cases. Setting key constants live
+in `models.py` (`SETTING_*`) so callers don't depend on stringly-typed
+keys. Admin edits via `/admin/settings`.
 
 ---
 

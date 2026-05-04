@@ -12,9 +12,12 @@ Vid skriftlig rapportering ska det även framgå vem som rapporterar detta till 
 Se nedan och utveckla ovastående.
 
 ## Klart
-- [x] **Morgonrapport-vy** — `/tickets/morgonrapport`. Default-fönster 08:00→08:00 lokal, valbar via query-params. KPI-rad, öppna P1/P2, nya/händelser/avslutade i fönstret. Print-stöd.
-- [x] **Övergripande kategorier** — Säkerhet, Miljö, Hälsa, Väder, Övrigt seedade i ny `categories`-tabell. Admin kan lägga till/ta bort (utom Övrigt) och sätta sortering via /admin/categories.
-- [x] **Taggar** — Det som tidigare hette kategorier är nu `tags`. Sätts i efterhand på ticket, kan ändras, oanvända kan tas bort. En tagg kan kopplas till flera kategorier via /admin/tags.
+- [x] **Morgonrapport-vy** — `/tickets/morgonrapport`. Rotationstimme styrs från Inställningar (default 08:00). KPI-rutorna är klickbara länkar till filtrerad ärendelista; varje ärende-rad är klickbar till ticketen. Print-stöd.
+- [x] **Övergripande kategorier** — Säkerhet, Miljö, Hälsa, Väder, Övrigt seedade i ny `categories`-tabell. Admin kan lägga till/ta bort (utom Övrigt) och sätta sortering via `/admin/categories`.
+- [x] **Taggar** — Det som tidigare hette kategorier är nu `tags`. Sätts i efterhand på ticket, kan ändras, oanvända kan tas bort. En tagg kan kopplas till flera kategorier via `/admin/tags`.
+- [x] **Tids-filter på `/tickets/`** — Skapad/Uppdaterad/Avslutad + från/till. Används av morgonrapportens KPI-länkar.
+- [x] **TV-display-läge** — admin styr om TV-korten visar beskrivning (default, trunkerad till ~160 tecken med 2-rads clamp + kategori-badge inline) eller bara kategori + taggar.
+- [x] **Inställningar** (`/admin/settings`) — `system_settings` key/value-tabell + sektionerad sida. Initialt två settings: TV-läge och morgonrapportens rotationstimme.
 
 ## SBAR-mappning (utredning - vänta med implementation)
 
