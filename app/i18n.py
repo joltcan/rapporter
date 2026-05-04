@@ -271,6 +271,7 @@ TRANSLATIONS = {
         "Any status": "Alla statusar",
         "Open (all non-closed)": "Öppna (alla ej avslutade)",
         "Any category": "Alla kategorier",
+        "Time field": "Tidsfält",
     },
 }
 

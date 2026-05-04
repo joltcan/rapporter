@@ -243,6 +243,17 @@ def list_tickets():
     category_f = request.args.get("category", type=int)
     tag_f = request.args.get("tag", type=int)
     search = request.args.get("search", "").strip()
+    # Time filter: one range (`time_from`/`time_to`) applied to one of
+    # `created_at`, `updated_at`, or `closed_at` depending on
+    # `time_field`. Keeps the URL surface small and the UI to a single
+    # from/to picker.
+    time_field = request.args.get("time_field", "created")
+    if time_field not in ("created", "updated", "closed"):
+        time_field = "created"
+    time_from_raw = request.args.get("time_from", "")
+    time_to_raw = request.args.get("time_to", "")
+    time_from = _parse_local_to_utc(time_from_raw)
+    time_to = _parse_local_to_utc(time_to_raw)
 
     q = Ticket.query
     # "open" is a pseudo-value covering the three non-terminal statuses,
@@ -262,6 +273,15 @@ def list_tickets():
         q = q.filter(Ticket.category_id == category_f)
     if tag_f:
         q = q.filter(Ticket.tags.any(Tag.id == tag_f))
+    if time_from is not None or time_to is not None:
+        col = {
+            "closed": Ticket.closed_at,
+            "updated": Ticket.updated_at,
+        }.get(time_field, Ticket.created_at)
+        if time_from is not None:
+            q = q.filter(col >= time_from)
+        if time_to is not None:
+            q = q.filter(col < time_to)
     if search:
         like = f"%{search}%"
         q = q.filter(db.or_(
@@ -289,6 +309,9 @@ def list_tickets():
             "category": category_f,
             "tag": tag_f,
             "search": search,
+            "time_field": time_field,
+            "time_from": time_from_raw,
+            "time_to": time_to_raw,
         },
     )
 
