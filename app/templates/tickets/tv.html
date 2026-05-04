@@ -88,8 +88,23 @@
             justify-content: space-between;
             align-items: center;
             margin-bottom: 0.25rem;
+            gap: 0.5rem;
+        }
+        .tv-card .id-group {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+            min-width: 0;
         }
         .tv-card .id { color: #8b949e; font-weight: 600; font-family: ui-monospace, SFMono-Regular, monospace; }
+        .tv-card .cat-inline {
+            color: #c9d1d9;
+            font-size: 0.85rem;
+            font-weight: 500;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
         .tv-card .priority {
             font-weight: 700;
             font-size: 0.85rem;
@@ -196,7 +211,12 @@
                 {% for t in columns[status] %}
                 <div class="tv-card p{{ t.priority }}">
                     <div class="row1">
-                        <span class="id">#{{ t.id }}</span>
+                        <div class="id-group">
+                            <span class="id">#{{ t.id }}</span>
+                            {% if show_description and t.category %}
+                            <span class="cat-inline">{{ t.category.display_name }}</span>
+                            {% endif %}
+                        </div>
                         <span class="priority">P{{ t.priority }}</span>
                     </div>
                     {% if show_description %}
