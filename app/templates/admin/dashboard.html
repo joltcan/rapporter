@@ -66,9 +66,9 @@
     </div>
 </div>
 
-<!-- By status / by priority breakdowns -->
+<!-- By status / by priority / by category breakdowns -->
 <div class="row g-3 mb-4">
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card h-100">
             <div class="card-header"><i class="bi bi-bar-chart me-2"></i>{{ _('By status') }}</div>
             <div class="card-body">
@@ -87,7 +87,7 @@
             </div>
         </div>
     </div>
-    <div class="col-md-6">
+    <div class="col-md-4">
         <div class="card h-100">
             <div class="card-header"><i class="bi bi-flag me-2"></i>{{ _('By priority (open only)') }}</div>
             <div class="card-body">
@@ -101,6 +101,26 @@
                              role="progressbar" aria-valuenow="{{ pct }}"></div>
                     </div>
                     <span class="ms-2 text-muted small" style="min-width:40px; text-align:right;">{{ priority_counts[p] }}</span>
+                </a>
+                {% endfor %}
+            </div>
+        </div>
+    </div>
+    <div class="col-md-4">
+        <div class="card h-100">
+            <div class="card-header"><i class="bi bi-collection me-2"></i>{{ _('By category') }}</div>
+            <div class="card-body">
+                {% for cat in all_categories %}
+                <a class="d-flex align-items-center mb-2 text-decoration-none text-reset"
+                   href="{{ url_for('tickets.list_tickets', category=cat.id) }}">
+                    <span class="badge me-2 border"
+                          style="min-width:100px; text-align:left; background-color:{{ cat.color }}; color:#fff;">{{ cat.display_name }}</span>
+                    <div class="progress flex-grow-1" style="height: 10px;">
+                        {% set pct = (category_counts[cat.id] / total * 100) if total else 0 %}
+                        <div class="progress-bar" style="width: {{ pct }}%; background-color: {{ cat.color }};"
+                             role="progressbar" aria-valuenow="{{ pct }}"></div>
+                    </div>
+                    <span class="ms-2 text-muted small" style="min-width:40px; text-align:right;">{{ category_counts[cat.id] }}</span>
                 </a>
                 {% endfor %}
             </div>
@@ -126,6 +146,7 @@
                         <td class="text-muted small">#{{ t.id }}</td>
                         <td><span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span></td>
                         <td><span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span></td>
+                        <td>{% if t.category %}<span class="badge border" style="background-color:{{ t.category.color }};color:#fff;">{{ t.category.display_name }}</span>{% endif %}</td>
                         <td class="small">{{ (t.description or '')|truncate(40, True) }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}"
@@ -138,7 +159,7 @@
                 </tbody>
                 {% else %}
                 <tbody>
-                    <tr><td colspan="5" class="text-center text-muted py-4">{{ _('No tickets yet.') }}</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">{{ _('No tickets yet.') }}</td></tr>
                 </tbody>
                 {% endif %}
             </table>
@@ -157,6 +178,7 @@
                         <td class="text-muted small">#{{ t.id }}</td>
                         <td><span class="badge badge-p{{ t.priority }}">{{ priority_label(t.priority) }}</span></td>
                         <td><span class="badge badge-{{ t.status }}">{{ status_label(t.status) }}</span></td>
+                        <td>{% if t.category %}<span class="badge border" style="background-color:{{ t.category.color }};color:#fff;">{{ t.category.display_name }}</span>{% endif %}</td>
                         <td class="small text-nowrap">{{ t.updated_at.strftime('%d %b %H:%M') if t.updated_at }}</td>
                         <td class="text-end">
                             <a href="{{ url_for('tickets.view_ticket', ticket_id=t.id) }}"
@@ -169,7 +191,7 @@
                 </tbody>
                 {% else %}
                 <tbody>
-                    <tr><td colspan="5" class="text-center text-muted py-4">{{ _('No tickets yet.') }}</td></tr>
+                    <tr><td colspan="6" class="text-center text-muted py-4">{{ _('No tickets yet.') }}</td></tr>
                 </tbody>
                 {% endif %}
             </table>

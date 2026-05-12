@@ -221,6 +221,11 @@ def dashboard():
         .all()
     )
 
+    all_categories = Category.query.order_by(
+        Category.sort_order.asc(), Category.display_name.asc()
+    ).all()
+    category_counts = {c.id: c.tickets.count() for c in all_categories}
+
     return render_template(
         "admin/dashboard.html",
         total=total,
@@ -237,6 +242,8 @@ def dashboard():
         latest=latest,
         statuses=STATUSES,
         priorities=PRIORITIES,
+        all_categories=all_categories,
+        category_counts=category_counts,
     )
 
 
