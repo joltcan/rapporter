@@ -120,7 +120,10 @@
                             {% if t.is_public %}<i class="bi bi-globe ms-1 text-info" title="{{ _('Public') }}"></i>{% endif %}
                         </td>
                         <td class="small">
-                            {% if t.category %}<span class="badge bg-light text-dark border">{{ t.category.display_name }}</span>{% else %}–{% endif %}
+                            {% if t.category %}
+                            <span class="badge border"
+                                  style="background-color:{{ t.category.color }};color:#fff;">{{ t.category.display_name }}</span>
+                            {% else %}–{% endif %}
                         </td>
                         <td class="small">
                             {% for tag in t.tags %}

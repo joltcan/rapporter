@@ -138,6 +138,10 @@ class CategoryForm(FlaskForm):
         "Category name",
         validators=[DataRequired(), Length(min=1, max=80)],
     )
+    color = StringField(
+        "Color",
+        validators=[Optional(), Regexp(r"^#[0-9a-fA-F]{6}$", message="Must be a hex color, e.g. #3b82f6")],
+    )
     sort_order = StringField(
         "Sort order",
         # Stored as integer in the model; coerced in the route. Optional
@@ -408,6 +412,7 @@ def categories():
             cat = Category(
                 name=normalised,
                 display_name=display,
+                color=form.color.data or "#6c757d",
                 sort_order=_parse_sort_order(form.sort_order.data),
             )
             db.session.add(cat)
@@ -436,7 +441,7 @@ def categories():
 @admin_required
 def edit_category(category_id):
     cat = Category.query.get_or_404(category_id)
-    form = CategoryForm(name=cat.display_name, sort_order=str(cat.sort_order))
+    form = CategoryForm(name=cat.display_name, color=cat.color, sort_order=str(cat.sort_order))
     if form.validate_on_submit():
         raw = form.name.data
         normalised = Category.normalise(raw)
@@ -451,6 +456,7 @@ def edit_category(category_id):
                 display = display[:1].upper() + display[1:] if display else normalised.capitalize()
                 cat.name = normalised
                 cat.display_name = display
+                cat.color = form.color.data or "#6c757d"
                 cat.sort_order = _parse_sort_order(form.sort_order.data)
                 db.session.commit()
                 flash(_("Category renamed."), "success")

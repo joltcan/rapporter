@@ -214,7 +214,8 @@
                         <div class="id-group">
                             <span class="id">#{{ t.id }}</span>
                             {% if show_description and t.category %}
-                            <span class="cat-inline">{{ t.category.display_name }}</span>
+                            <span class="cat-inline"
+                                  style="color:{{ t.category.color }};">{{ t.category.display_name }}</span>
                             {% endif %}
                         </div>
                         <span class="priority">P{{ t.priority }}</span>
@@ -225,7 +226,8 @@
                         {% endif %}
                     {% else %}
                         {% if t.category %}
-                        <div class="category">{{ t.category.display_name }}</div>
+                        <div class="category"
+                             style="color:{{ t.category.color }};">{{ t.category.display_name }}</div>
                         {% endif %}
                         {% if t.tags %}
                         <div class="tags">

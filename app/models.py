@@ -103,6 +103,8 @@ class Category(db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(80), unique=True, nullable=False)
     display_name = db.Column(db.String(80), nullable=False)
+    # Hex colour shown on ticket badges and the TV board, e.g. "#ef5350".
+    color = db.Column(db.String(7), nullable=False, default="#6c757d")
     # Manual ordering -- categories render in this order in dropdowns,
     # admin lists, and the morning report. Defaults to 0 so newly added
     # categories sort to the top until the admin slots them in.

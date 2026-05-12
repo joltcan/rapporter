@@ -25,6 +25,17 @@
                 {% endfor %}
             </div>
             <div class="mb-3">
+                <label class="form-label fw-semibold" for="cat_color">{{ _('Color') }}</label>
+                <div class="d-flex gap-2 align-items-center">
+                    {{ form.color(class="form-control form-control-color", id="cat_color",
+                       type="color", value=form.color.data or '#6c757d') }}
+                    <span class="form-text small mb-0">{{ _('Badge colour for this category.') }}</span>
+                </div>
+                {% for error in form.color.errors %}
+                <div class="text-danger small">{{ _(error) }}</div>
+                {% endfor %}
+            </div>
+            <div class="mb-3">
                 <label class="form-label fw-semibold" for="cat_sort">{{ _('Sort order') }}</label>
                 {{ form.sort_order(class="form-control", id="cat_sort", inputmode="numeric") }}
                 <div class="form-text small">{{ _('Lower numbers come first.') }}</div>
