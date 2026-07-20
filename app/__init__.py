@@ -9,6 +9,7 @@ from flask_login import LoginManager, current_user
 from flask_wtf.csrf import CSRFProtect
 from flask_limiter import Limiter
 from flask_limiter.util import get_remote_address
+from werkzeug.middleware.proxy_fix import ProxyFix
 from dotenv import load_dotenv
 
 load_dotenv()
@@ -29,13 +30,21 @@ limiter = Limiter(
 
 def _bool_env(name, default=False):
     val = os.environ.get(name)
-    if val is None:
+    # docker compose renders unset variables as empty strings; treat
+    # set-but-empty the same as unset so defaults still apply.
+    if val is None or val.strip() == "":
         return default
     return val.strip().lower() in ("1", "true", "yes", "on")
 
 
 def create_app():
     app = Flask(__name__)
+
+    # Trust exactly one proxy hop (Caddy) for client IP and scheme, so the
+    # login rate limiter keys on the real client instead of the proxy's
+    # container IP. Clients hitting gunicorn directly on :8000 could forge
+    # X-Forwarded-For; that port is only exposed to the trusted LAN.
+    app.wsgi_app = ProxyFix(app.wsgi_app, x_for=1, x_proto=1)
 
     # --- Config -----------------------------------------------------------
     app.config["SECRET_KEY"] = os.environ.get("SECRET_KEY", "dev-secret-key-change-in-production")
