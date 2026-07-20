@@ -21,11 +21,10 @@ and switches the web container to Flask's dev server with reload. The app
 is available at **http://localhost:8000**.
 
 On first start, `flask db upgrade` and `flask seed` run as part of the dev
-command, creating the schema and the default admin:
-
-| Username | Password |
-|---|---|
-| `sysadm` | `bananipyjamas` |
+command, creating the schema and the default admin `sysadm`. The seed
+password is taken from `SEED_ADMIN_PASSWORD` if set, otherwise a random
+one is generated and printed once in the container logs
+(`docker compose logs web`). Log in and change it immediately.
 
 Stop with `docker compose down` (add `-v` to wipe the database volume).
 

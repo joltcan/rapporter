@@ -24,11 +24,11 @@ då körs appen i debug-läge på http://localhost:8000 och Caddy hoppas över.
 
 ## Inloggning första gången
 
-| Användarnamn | Lösenord |
-|---|---|
-| `sysadm` | `bananipyjamas` |
+Vid första start skapas administratörskontot `sysadm`. Lösenordet tas från
+`SEED_ADMIN_PASSWORD` om det är satt, annars genereras ett slumpmässigt som
+skrivs ut en gång i loggen (`docker compose logs web`).
 
-**Byt lösenord direkt efter första inloggningen.**
+**Logga in och byt lösenord direkt.**
 
 ## Roller
 

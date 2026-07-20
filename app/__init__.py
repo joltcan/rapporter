@@ -134,13 +134,21 @@ def register_commands(app):
     def seed():
         from app.models import User, ROLE_ADMIN
         import bcrypt
+        import secrets
 
         admin = User.query.filter_by(username="sysadm").first()
-        if not admin:
-            pwd_hash = bcrypt.hashpw("bananipyjamas".encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
-            admin = User(username="sysadm", password_hash=pwd_hash, role=ROLE_ADMIN)
-            db.session.add(admin)
-            db.session.commit()
-            click.echo("Admin user 'sysadm' created (password: bananipyjamas).")
-        else:
+        if admin:
             click.echo("Admin user 'sysadm' already exists.")
+            return
+
+        # Never hard-code the seed password: this repo is public, so a
+        # literal here would be a live admin credential. Take it from the
+        # environment, or mint a random one and print it once so it only
+        # ever exists in the operator's terminal, not in git.
+        password = os.environ.get("SEED_ADMIN_PASSWORD") or secrets.token_urlsafe(12)
+        pwd_hash = bcrypt.hashpw(password.encode("utf-8"), bcrypt.gensalt()).decode("utf-8")
+        admin = User(username="sysadm", password_hash=pwd_hash, role=ROLE_ADMIN)
+        db.session.add(admin)
+        db.session.commit()
+        click.echo(f"Admin user 'sysadm' created with password: {password}")
+        click.echo("Log in and change it now; it will not be shown again.")
