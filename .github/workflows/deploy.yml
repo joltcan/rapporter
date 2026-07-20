@@ -30,11 +30,13 @@ jobs:
       run:
         # Windows runner: Windows PowerShell is always present. A bare
         # `bash` would resolve to the WSL stub in System32, which has no
-        # distributions for the service account.
-        shell: powershell
+        # distributions for the service account. ExecutionPolicy Bypass
+        # because the box's policy is Restricted, which blocks the
+        # runner's generated step scripts.
+        shell: powershell -ExecutionPolicy Bypass -Command ". '{0}'"
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           clean: false
 
