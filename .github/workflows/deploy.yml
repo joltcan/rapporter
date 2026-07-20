@@ -28,8 +28,10 @@ jobs:
     environment: production
     defaults:
       run:
-        # The runner is a Windows box; Git Bash keeps these steps portable.
-        shell: bash
+        # Windows runner: Windows PowerShell is always present. A bare
+        # `bash` would resolve to the WSL stub in System32, which has no
+        # distributions for the service account.
+        shell: powershell
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -40,7 +42,9 @@ jobs:
         env:
           # Per-host env file; _HP = the hp-elitedesk Windows host.
           ENV_FILE: ${{ vars.ENVIRONMENT_HP }}
-        run: printf '%s' "$ENV_FILE" > .env
+        # WriteAllText with BOM-less UTF-8 -- docker compose chokes on a BOM
+        # before the first key, which Out-File would emit.
+        run: '[IO.File]::WriteAllText("$env:GITHUB_WORKSPACE\.env", $env:ENV_FILE, (New-Object System.Text.UTF8Encoding($false)))'
 
       - name: Build web image
         # Self-hosted runner -- the local Docker daemon already caches
