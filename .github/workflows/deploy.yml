@@ -1,7 +1,7 @@
 # Deploy to production on every push to master.
 #
-# Runs on a self-hosted runner tagged `lluw` -- the runner lives on the
-# production host and has Docker installed. The workflow:
+# Runs on a self-hosted runner tagged `production` -- the runner lives on
+# the production host and has Docker installed. The workflow:
 #
 #   1. Checks out the code into the runner workspace (keeps untracked
 #      files like .env that the host provides).
@@ -24,8 +24,12 @@ concurrency:
 
 jobs:
   deploy:
-    runs-on: [self-hosted, lluw]
+    runs-on: [self-hosted, production, windows]
     environment: production
+    defaults:
+      run:
+        # The runner is a Windows box; Git Bash keeps these steps portable.
+        shell: bash
     steps:
       - name: Checkout
         uses: actions/checkout@v4
@@ -34,7 +38,8 @@ jobs:
 
       - name: Write .env from environment variable
         env:
-          ENV_FILE: ${{ vars.ENVIRONMENT }}
+          # Per-host env file; _HP = the hp-elitedesk Windows host.
+          ENV_FILE: ${{ vars.ENVIRONMENT_HP }}
         run: printf '%s' "$ENV_FILE" > .env
 
       - name: Build web image

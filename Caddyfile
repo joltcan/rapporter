@@ -1,32 +1,36 @@
 # Caddyfile for Scout Tickets
 #
-# Three modes driven by CADDY_DOMAIN:
+# Modes are driven by env vars set in .env (see .env.example):
 #
-#   CADDY_DOMAIN=localhost            -> HTTP only on :80 (no internet needed)
-#                                        Suitable for running at camp without DNS or internet.
-#   CADDY_DOMAIN=rapporter.example.se -> Automatic HTTPS via Let's Encrypt.
-#                                        Requires the domain's A/AAAA records to point here
-#                                        and ports 80/443 to be reachable from the internet.
-#   CADDY_DOMAIN=localhost:443        -> Self-signed/internal CA HTTPS.
-#                                        Useful for local testing with a cert.
+#   Offline / camp (no internet, no DNS):
+#       CADDY_DOMAIN=:80
+#       CADDY_AUTO_HTTPS_LINE=auto_https off
+#     Plain HTTP for any hostname or IP on port 80.
 #
-# Caddy picks the right mode based on the host label.
+#   Public, automatic HTTPS (host reachable from the internet):
+#       CADDY_DOMAIN=rapporter.example.se
+#     Let's Encrypt via HTTP-01; DNS must point here and 80/443 must be
+#     reachable. Set a real CADDY_ACME_EMAIL.
+#
+#   Pre-issued certificate (host NOT reachable from the internet; cert is
+#   issued elsewhere, e.g. DNS-01 on a trusted machine, and copied in):
+#       CADDY_DOMAIN=ticket.example.se
+#       CADDY_TLS_LINE=tls /certs/fullchain.pem /certs/privkey.pem
+#     Point CERTS_DIR (compose) at the directory holding the cert files.
+#
+# Note: `auto_https` has no "on" value -- automatic HTTPS is on unless the
+# option is present, which is why the offline mode injects the whole line.
 
 {
 	# admin endpoint disabled in production (security hygiene).
 	admin off
-	# Let `auto_https off` be toggled via env var so offline deployments
-	# (no DNS, no internet) can keep serving plain HTTP without Caddy
-	# trying to grab a certificate.
-	auto_https {$CADDY_AUTO_HTTPS:on}
+	{$CADDY_AUTO_HTTPS_LINE}
 	email {$CADDY_ACME_EMAIL:admin@localhost}
 }
 
-# Main site block. When CADDY_DOMAIN=localhost Caddy serves it on plain
-# HTTP port 80 (because auto_https will down-shift for the "localhost"
-# label). For real domains, Caddy requests a Let's Encrypt certificate
-# automatically.
-{$CADDY_DOMAIN:localhost} {
+{$CADDY_DOMAIN::80} {
+	{$CADDY_TLS_LINE}
+
 	reverse_proxy web:8000 {
 		header_up X-Real-IP {remote_host}
 		header_up X-Forwarded-For {remote_host}

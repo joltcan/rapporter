@@ -4,8 +4,15 @@
 #   web   -- Flask + Gunicorn (custom image, runs as the `appuser` user)
 #   caddy -- Reverse proxy with optional HTTPS (official Alpine image)
 #
-# Offline mode: set CADDY_DOMAIN=localhost and BASE_URL=http://<lan-ip> in .env.
-# Public mode:  set CADDY_DOMAIN to a real hostname and keep CADDY_AUTO_HTTPS=on.
+# Offline mode: CADDY_DOMAIN=:80, CADDY_AUTO_HTTPS_LINE="auto_https off",
+#               BASE_URL=http://<lan-ip> in .env.
+# Public mode:  CADDY_DOMAIN=<real hostname>; either automatic Let's Encrypt
+#               (host reachable from the internet) or a pre-issued cert via
+#               CADDY_TLS_LINE + CERTS_DIR (see Caddyfile for details).
+
+# Pinned so the named volumes keep their identity no matter which directory
+# the stack is started from (manual checkout, CI runner workspace, ...).
+name: rapporter
 
 services:
   db:
@@ -28,8 +35,10 @@ services:
       retries: 10
     networks:
       - internal
+    # Bound to localhost by default so Postgres is not exposed on the LAN.
+    # Set POSTGRES_BIND=0.0.0.0 in .env if external tools need direct access.
     ports:
-      - "5432:5432"
+      - "${POSTGRES_BIND:-127.0.0.1}:5432:5432"
 
   redis:
     image: redis:7-alpine
@@ -51,8 +60,8 @@ services:
     build: .
     restart: unless-stopped
     environment:
-      SECRET_KEY: ${SECRET_KEY}
-      DATABASE_URL: postgresql://rapporter:${POSTGRES_PASSWORD:-rapporter}@db:5432/${POSTGRES_DB:-rapporter}
+      SECRET_KEY: ${SECRET_KEY:?SECRET_KEY must be set in .env}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-rapporter}:${POSTGRES_PASSWORD:-rapporter}@db:5432/${POSTGRES_DB:-rapporter}
       REDIS_URL: redis://redis:6379/0
       FLASK_APP: wsgi.py
       FLASK_ENV: ${FLASK_ENV:-production}
@@ -69,6 +78,10 @@ services:
         condition: service_healthy
     networks:
       - internal
+    # Gunicorn published directly so LAN clients can reach the app over
+    # plain HTTP even with no internet and without going through Caddy.
+    ports:
+      - "8000:8000"
     volumes:
       - ./app/static:/app/app/static
 
@@ -80,11 +93,18 @@ services:
       - "80:80"
       - "443:443"
     environment:
-      CADDY_DOMAIN: ${CADDY_DOMAIN:-localhost}
-      CADDY_AUTO_HTTPS: ${CADDY_AUTO_HTTPS:-on}
+      CADDY_DOMAIN: ${CADDY_DOMAIN:-:80}
+      # Whole-line injection: empty means "automatic HTTPS on". Offline
+      # deployments set CADDY_AUTO_HTTPS_LINE=auto_https off.
+      CADDY_AUTO_HTTPS_LINE: ${CADDY_AUTO_HTTPS_LINE:-}
+      # Whole-line injection: set to "tls /certs/<fullchain> /certs/<key>"
+      # to serve a cert issued elsewhere (works behind NAT, no ACME here).
+      CADDY_TLS_LINE: ${CADDY_TLS_LINE:-}
       CADDY_ACME_EMAIL: ${CADDY_ACME_EMAIL:-admin@localhost}
     volumes:
       - ./Caddyfile:/etc/caddy/Caddyfile:ro
+      # Pre-issued certs (static-cert mode); harmless empty dir otherwise.
+      - ${CERTS_DIR:-./certs}:/certs:ro
       - caddy_data:/data
       - caddy_config:/config
     networks:

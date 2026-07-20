@@ -16,3 +16,5 @@ caddy_config/
 *.sql
 *.bz2
 .DS_Store
+graphify-out/
+certs/
