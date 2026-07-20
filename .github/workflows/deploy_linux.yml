@@ -11,7 +11,7 @@
 # The .env file must already exist in the workspace on the host --
 # it is not checked into git.
 
-name: Deploy
+name: Deploy Linux
 
 on:
   push:
@@ -19,7 +19,7 @@ on:
   workflow_dispatch:
 
 concurrency:
-  group: deploy-prod
+  group: deploy-prod-linux
   cancel-in-progress: false
 
 jobs:
@@ -28,7 +28,7 @@ jobs:
     environment: production
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           clean: false
 
