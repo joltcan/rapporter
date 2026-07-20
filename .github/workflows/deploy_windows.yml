@@ -42,8 +42,8 @@ jobs:
 
       - name: Write .env from environment variable
         env:
-          # Per-host env file; _HP = the hp-elitedesk Windows host.
-          ENV_FILE: ${{ vars.ENVIRONMENT_HP }}
+          # Per-host env file for the Windows production host.
+          ENV_FILE: ${{ vars.ENVIRONMENT_WIN }}
         # WriteAllText with BOM-less UTF-8 -- docker compose chokes on a BOM
         # before the first key, which Out-File would emit.
         run: '[IO.File]::WriteAllText("$env:GITHUB_WORKSPACE\.env", $env:ENV_FILE, (New-Object System.Text.UTF8Encoding($false)))'
